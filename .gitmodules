@@ -1,0 +1,3 @@
+[submodule "vendor/slang"]
+	path = vendor/slang
+	url = https://github.com/shader-slang/slang
