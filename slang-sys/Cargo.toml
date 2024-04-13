@@ -1,7 +1,9 @@
 [package]
-name = "slang"
+name = "slang-sys"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-slang-sys = { path = "slang-sys" }
+
+[build-dependencies]
+bindgen = "0.69.4"
