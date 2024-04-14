@@ -29,4 +29,7 @@ fn generate_bindings() {
 
 fn main() {
     generate_bindings();
+
+    println!("cargo:rustc-link-search=native={}", "C:/Users/beast/Documents/Projects/slang-rs/slang-sys/lib");
+    println!("cargo:rustc-link-lib=static=slang");
 }
