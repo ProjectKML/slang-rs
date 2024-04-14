@@ -8,7 +8,7 @@ use std::ffi::{c_char, c_int, c_void};
 
 include!("../gen/bindings.rs");
 
-interface!(IUnknown, ISlangUnknown, [0xc140b5fd, 0x0c78, 0x452e, [0xba, 0x7c, 0x1a, 0x1e, 0x70, 0xc7, 0xf7, 0x1c]], {
+interface!(IUnknown, ISlangUnknown, [0x00000000, 0x0000, 0x0000, [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46]], {
 	queryInterface: unsafe extern "C" fn(*mut ISlangUnknown, *const SlangUUID, *mut *mut ::std::os::raw::c_void) -> SlangResult,
 	addRef: unsafe extern "C" fn(*mut ISlangUnknown) -> u32,
 	release: unsafe extern "C" fn(*mut ISlangUnknown) -> u32,
