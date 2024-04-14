@@ -1,5 +1,6 @@
+use std::ffi::c_void;
 use std::mem;
-use crate::{IUnknown, SlangUUID};
+use crate::{IUnknown, SlangResult, SlangUUID};
 
 pub unsafe trait Interface : Sized {
     const UUID: SlangUUID;
@@ -24,6 +25,21 @@ pub unsafe trait Interface : Sized {
         unsafe {
             mem::transmute(self)
         }
+    }
+
+    #[inline]
+    unsafe fn query_interface(&self, uuid: *const SlangUUID, object: *mut *mut c_void) -> SlangResult {
+        (self.as_unknown().vtable().queryInterface)(self.as_raw().cast(), uuid, object)
+    }
+
+    #[inline]
+    unsafe fn add_ref(&self) -> u32 {
+        (self.as_unknown().vtable().addRef)(self.as_raw().cast())
+    }
+
+    #[inline]
+    unsafe fn release(&self) -> u32 {
+        (self.as_unknown().vtable().release)(self.as_raw().cast())
     }
 }
 
@@ -93,11 +109,4 @@ macro_rules! vtable_call {
 	($self: expr, $method: ident($($args: expr),*)) => {
 		($self.vtable().$method)($self.as_raw().cast(), $($args),*)
 	};
-}
-
-#[macro_export]
-macro_rules! vtable_unknown_call {
-    ($self: expr, $method: ident($($args: expr),*)) => {
-        ($self.as_unknown().vtable().$method)($self.as_raw().cast(), $($args),*)
-    }
 }

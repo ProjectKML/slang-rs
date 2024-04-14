@@ -1,6 +1,6 @@
 use std::ptr;
 
-use slang_sys::{Interface, vtable_unknown_call};
+use slang_sys::Interface;
 
 mod utils;
 
@@ -33,7 +33,7 @@ impl GlobalSession {
 impl Drop for GlobalSession {
     fn drop(&mut self) {
         unsafe {
-            vtable_unknown_call!(self.0, release());
+            self.0.release();
         }
     }
 }
