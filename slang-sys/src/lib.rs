@@ -8,6 +8,12 @@ use std::ffi::{c_char, c_int, c_void};
 
 include!("../gen/bindings.rs");
 
+interface!(IUnknown, ISlangUnknown, [0xc140b5fd, 0x0c78, 0x452e, [0xba, 0x7c, 0x1a, 0x1e, 0x70, 0xc7, 0xf7, 0x1c]], {
+	queryInterface: unsafe extern "C" fn(*mut ISlangUnknown, *const SlangUUID, *mut *mut ::std::os::raw::c_void) -> SlangResult,
+	addRef: unsafe extern "C" fn(*mut ISlangUnknown) -> u32,
+	release: unsafe extern "C" fn(*mut ISlangUnknown) -> u32,
+});
+
 interface!(IGlobalSession, [0xc140b5fd, 0x0c78, 0x452e, [0xba, 0x7c, 0x1a, 0x1e, 0x70, 0xc7, 0xf7, 0x1c]], {
 	createSession: unsafe extern "stdcall" fn(*mut c_void, desc: *const slang_SessionDesc, outSession: *mut *mut slang_ISession) -> SlangResult,
 	findProfile: unsafe extern "stdcall" fn(*mut c_void, name: *const c_char) -> SlangProfileID,

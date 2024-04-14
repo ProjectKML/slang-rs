@@ -1,11 +1,10 @@
 use std::fs;
-use std::path::Path;
 use bindgen::Formatter;
 
 fn generate_bindings() {
     fs::create_dir_all("gen").unwrap();
 
-    let bindings = bindgen::Builder::default()
+    bindgen::Builder::default()
         .header("vendor/slang/slang.h")
         .clang_arg("-I./vendor/slang")
         .clang_arg("-xc++")
