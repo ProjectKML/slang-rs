@@ -91,13 +91,13 @@ pub(crate) use interface;
 #[macro_export]
 macro_rules! vtable_call {
 	($self: expr, $method: ident($($args: expr),*)) => {
-		($self.vtable().$method)($self.as_raw(), $($args),*)
+		($self.vtable().$method)($self.as_raw().cast(), $($args),*)
 	};
 }
 
 #[macro_export]
 macro_rules! vtable_unknown_call {
     ($self: expr, $method: ident($($args: expr),*)) => {
-        ($self.as_unknown().vtable().$method)($self.as_raw() as *mut $crate::ISlangUnknown, $($args),*)
+        ($self.as_unknown().vtable().$method)($self.as_raw().cast(), $($args),*)
     }
 }
