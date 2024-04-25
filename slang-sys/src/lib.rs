@@ -43,5 +43,18 @@ interface!(IGlobalSession, [0xc140b5fd, 0x0c78, 0x452e, [0xba, 0x7c, 0x1a, 0x1e,
 	getSessionDescDigest: unsafe extern "stdcall" fn(*mut c_void, sessionDesc: *const slang_SessionDesc, outBlob: *mut *mut ISlangBlob) -> SlangResult,
 });
 
-interface!(ISession, [0x00000000, 0x0000, 0x0000, [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46]], {
+interface!(ISession, [0x67618701, 0xd116, 0x468f, [0xab, 0x3b, 0x47, 0x4b, 0xed, 0xce, 0xe, 0x3d]], {
+});
+
+interface!(ICompileRequest, [0x96d33993, 0x317c, 0x4db5, [0xaf, 0xd8, 0x66, 0x6e, 0xe7, 0x72, 0x48, 0xe2]], {
+	setFileSystem: unsafe extern "stdcall" fn(*mut c_void, fileSystem: *mut ISlangFileSystem),
+	setCompileFlags: unsafe extern "stdcall" fn(*mut c_void, flags: SlangCompileFlags),
+	getCompileFlags: unsafe extern "stdcall" fn(*mut c_void) -> SlangCompileFlags,
+	setDumpIntermediates: unsafe extern "stdcall" fn(*mut c_void, enable: c_int),
+	setDumpIntermediatePrefix: unsafe extern "stdcall" fn(*mut c_void, prefix: *const c_char),
+
+});
+
+interface!(ISlangFileSystem, [0x003A09FC, 0x3A4D, 0x4BA0, [0xAD, 0x60, 0x1F, 0xD8, 0x63, 0xA9, 0x15, 0xAB]], {
+
 });
