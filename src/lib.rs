@@ -1,7 +1,15 @@
-use std::{ffi::c_char, mem, ptr};
+use std::{
+    ffi::{c_char, c_void, CStr, CString},
+    mem, ptr, slice,
+};
 
 use bitflags::bitflags;
-use slang_sys::{vtable_call, Interface};
+use slang_sys::{
+    vtable_call, IBlob, IComponentType, IModule, IMutableFileSystem, ISession, ISharedLibrary,
+    ISlangSharedLibrary, Interface, SlangDebugInfoLevel, SlangLineDirectiveMode,
+    SlangLineDirectiveModeIntegral, SlangOptimizationLevel, SlangParameterCategory,
+    SlangReflection, SlangSeverity, _bindgen_ty_2,
+};
 
 use crate::utils::assert_size_and_align;
 
@@ -398,10 +406,924 @@ impl Drop for GlobalSession {
     }
 }
 
+pub struct FileSystem(sys::ISlangFileSystem);
+
 pub struct Session(sys::ISession);
+
+pub struct Writer(sys::IWriter);
+
+pub struct SharedLibrary(sys::ISharedLibrary);
+
+pub struct MutableFileSystem(sys::IMutableFileSystem);
+
+pub struct Blob(sys::IBlob);
+
+pub struct ComponentType(sys::IComponentType);
+
+pub struct Module(sys::IModule);
+
+impl Blob {
+    #[inline]
+    pub unsafe fn get_buffer_pointer(&self, buffer: *mut c_void) -> *const c_void {
+        vtable_call!(self.0, getBufferPointer())
+    }
+
+    #[inline]
+    pub unsafe fn get_buffer_size(&self) -> usize {
+        vtable_call!(self.0, getBufferSize())
+    }
+}
 
 impl Session {}
 
+bitflags! {
+    #[repr(transparent)]
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct CompilerFlags : u32 {
+        const NO_MANGLING = sys::SLANG_COMPILE_FLAG_NO_MANGLING as _;
+        const NO_CODEGEN = sys::SLANG_COMPILE_FLAG_NO_CODEGEN as _;
+        const OBFUSCATE = sys::SLANG_COMPILE_FLAG_OBFUSCATE as _;
+        const NO_CHECKING = sys::SLANG_COMPILE_FLAG_NO_CHECKING as _;
+        const SPLIT_MIXED_TYPES = sys::SLANG_COMPILE_FLAG_SPLIT_MIXED_TYPES as _;
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct DebugInfoLevel(u32);
+
+impl DebugInfoLevel {
+    pub const NONE: Self = Self(sys::SlangDebugInfoLevel_SLANG_DEBUG_INFO_LEVEL_NONE as _);
+    pub const MINIMAL: Self = Self(sys::SlangDebugInfoLevel_SLANG_DEBUG_INFO_LEVEL_MINIMAL as _);
+    pub const STANDARD: Self = Self(sys::SlangDebugInfoLevel_SLANG_DEBUG_INFO_LEVEL_STANDARD as _);
+    pub const MAXIMAL: Self = Self(sys::SlangDebugInfoLevel_SLANG_DEBUG_INFO_LEVEL_MAXIMAL as _);
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct OptimizationLevel(u32);
+
+impl OptimizationLevel {
+    pub const NONE: Self = Self(sys::SlangOptimizationLevel_SLANG_OPTIMIZATION_LEVEL_NONE as _);
+    pub const DEFAULT: Self =
+        Self(sys::SlangOptimizationLevel_SLANG_OPTIMIZATION_LEVEL_DEFAULT as _);
+    pub const HIGH: Self = Self(sys::SlangOptimizationLevel_SLANG_OPTIMIZATION_LEVEL_HIGH as _);
+    pub const MAXIMAL: Self =
+        Self(sys::SlangOptimizationLevel_SLANG_OPTIMIZATION_LEVEL_MAXIMAL as _);
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct ContainerFormat(i32);
+
+impl ContainerFormat {
+    pub const NONE: Self = Self(sys::SlangContainerFormat_SLANG_CONTAINER_FORMAT_NONE as _);
+    pub const MODULE: Self =
+        Self(sys::SlangContainerFormat_SLANG_CONTAINER_FORMAT_SLANG_MODULE as _);
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct PassThrough(i32);
+
+impl PassThrough {
+    pub const NONE: Self = Self(sys::SlangPassThrough_SLANG_PASS_THROUGH_NONE as _);
+    pub const FXC: Self = Self(sys::SlangPassThrough_SLANG_PASS_THROUGH_FXC as _);
+    pub const DXC: Self = Self(sys::SlangPassThrough_SLANG_PASS_THROUGH_DXC as _);
+    pub const GLSLANG: Self = Self(sys::SlangPassThrough_SLANG_PASS_THROUGH_GLSLANG as _);
+    pub const SPIRV_DIS: Self = Self(sys::SlangPassThrough_SLANG_PASS_THROUGH_SPIRV_DIS as _);
+}
+
+pub type DiagnosticCallback =
+    Option<unsafe extern "C" fn(message: *const c_char, user_data: *mut c_void)>;
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct CapabilityID(i32);
+impl CapabilityID {
+    pub const UNKNOWN: Self = Self(sys::SlangCapabilityID_SLANG_CAPABILITY_UNKNOWN);
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct WriterChannel(u32);
+
+impl WriterChannel {
+    pub const DIAGNOSTIC: Self = Self(sys::SlangWriterChannel_SLANG_WRITER_CHANNEL_DIAGNOSTIC);
+    pub const STD_OUTPUT: Self = Self(sys::SlangWriterChannel_SLANG_WRITER_CHANNEL_STD_OUTPUT);
+    pub const STD_ERROR: Self = Self(sys::SlangWriterChannel_SLANG_WRITER_CHANNEL_STD_ERROR);
+    pub const COUNT_OF: Self = Self(sys::SlangWriterChannel_SLANG_WRITER_CHANNEL_COUNT_OF);
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct SourceLanguage(i32);
+
+impl SourceLanguage {
+    pub const UNKNOWN: Self = Self(sys::SlangSourceLanguage_SLANG_SOURCE_LANGUAGE_UNKNOWN);
+    pub const SLANG: Self = Self(sys::SlangSourceLanguage_SLANG_SOURCE_LANGUAGE_SLANG);
+    pub const HLSL: Self = Self(sys::SlangSourceLanguage_SLANG_SOURCE_LANGUAGE_HLSL);
+    pub const GLSL: Self = Self(sys::SlangSourceLanguage_SLANG_SOURCE_LANGUAGE_GLSL);
+    pub const C: Self = Self(sys::SlangSourceLanguage_SLANG_SOURCE_LANGUAGE_C);
+    pub const CPP: Self = Self(sys::SlangSourceLanguage_SLANG_SOURCE_LANGUAGE_CPP);
+    pub const CUDA: Self = Self(sys::SlangSourceLanguage_SLANG_SOURCE_LANGUAGE_CUDA);
+    pub const SPIRV: Self = Self(sys::SlangSourceLanguage_SLANG_SOURCE_LANGUAGE_SPIRV);
+    pub const COUNT_OF: Self = Self(sys::SlangSourceLanguage_SLANG_SOURCE_LANGUAGE_COUNT_OF);
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Stage(u32);
+
+impl Stage {
+    pub const NONE: Self = Self(sys::SlangStage_SLANG_STAGE_NONE);
+    pub const VERTEX: Self = Self(sys::SlangStage_SLANG_STAGE_VERTEX);
+    pub const HULL: Self = Self(sys::SlangStage_SLANG_STAGE_HULL);
+    pub const DOMAIN: Self = Self(sys::SlangStage_SLANG_STAGE_DOMAIN);
+    pub const GEOMETRY: Self = Self(sys::SlangStage_SLANG_STAGE_GEOMETRY);
+    pub const FRAGMENT: Self = Self(sys::SlangStage_SLANG_STAGE_FRAGMENT);
+    pub const COMPUTE: Self = Self(sys::SlangStage_SLANG_STAGE_COMPUTE);
+    pub const RAY_GENERATION: Self = Self(sys::SlangStage_SLANG_STAGE_RAY_GENERATION);
+    pub const INTERSECTION: Self = Self(sys::SlangStage_SLANG_STAGE_INTERSECTION);
+    pub const ANY_HIT: Self = Self(sys::SlangStage_SLANG_STAGE_ANY_HIT);
+    pub const CLOSEST_HIT: Self = Self(sys::SlangStage_SLANG_STAGE_CLOSEST_HIT);
+    pub const MISS: Self = Self(sys::SlangStage_SLANG_STAGE_MISS);
+    pub const CALLABLE: Self = Self(sys::SlangStage_SLANG_STAGE_CALLABLE);
+    pub const MESH: Self = Self(sys::SlangStage_SLANG_STAGE_MESH);
+    pub const AMPLIFICATION: Self = Self(sys::SlangStage_SLANG_STAGE_AMPLIFICATION);
+    pub const PIXEL: Self = Self(sys::SlangStage_SLANG_STAGE_PIXEL);
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct ParameterCategory(u32);
+
+impl ParameterCategory {
+    pub const NONE: Self = Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_NONE);
+    pub const MIXED: Self = Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_MIXED);
+    pub const CONSTANT_BUFFER: Self =
+        Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_CONSTANT_BUFFER);
+    pub const SHADER_RESOURCE: Self =
+        Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_SHADER_RESOURCE);
+    pub const UNORDERED_ACCESS: Self =
+        Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_UNORDERED_ACCESS);
+    pub const VARYING_INPUT: Self =
+        Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_VARYING_INPUT);
+    pub const VARYING_OUTPUT: Self =
+        Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_VARYING_OUTPUT);
+    pub const SAMPLER_STATE: Self =
+        Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_SAMPLER_STATE);
+    pub const UNIFORM: Self = Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_UNIFORM);
+    pub const DESCRIPTOR_TABLE_SLOT: Self =
+        Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_DESCRIPTOR_TABLE_SLOT);
+    pub const SPECIALIZATION_CONSTANT: Self =
+        Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_SPECIALIZATION_CONSTANT);
+    pub const PUSH_CONSTANT_BUFFER: Self =
+        Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_PUSH_CONSTANT_BUFFER);
+    pub const REGISTER_SPACE: Self =
+        Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_REGISTER_SPACE);
+    pub const GENERIC: Self = Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_GENERIC);
+    pub const RAY_PAYLOAD: Self =
+        Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_RAY_PAYLOAD);
+    pub const HIT_ATTRIBUTES: Self =
+        Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_HIT_ATTRIBUTES);
+    pub const CALLABLE_PAYLOAD: Self =
+        Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_CALLABLE_PAYLOAD);
+    pub const SHADER_RECORD: Self =
+        Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_SHADER_RECORD);
+    pub const EXISTENTIAL_TYPE_PARAM: Self =
+        Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_EXISTENTIAL_TYPE_PARAM);
+    pub const EXISTENTIAL_OBJECT_PARAM: Self =
+        Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_EXISTENTIAL_OBJECT_PARAM);
+    pub const SUB_ELEMENT_REGISTER_SPACE: Self =
+        Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_SUB_ELEMENT_REGISTER_SPACE);
+    pub const SUBPASS: Self = Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_SUBPASS);
+    pub const COUNT: Self = Self(sys::SlangParameterCategory_SLANG_PARAMETER_CATEGORY_COUNT);
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Severity(i32);
+
+impl Severity {
+    pub const DISABLED: Self = Self(sys::SlangSeverity_SLANG_SEVERITY_DISABLED);
+    pub const NOTE: Self = Self(sys::SlangSeverity_SLANG_SEVERITY_NOTE);
+    pub const WARNING: Self = Self(sys::SlangSeverity_SLANG_SEVERITY_WARNING);
+    pub const ERROR: Self = Self(sys::SlangSeverity_SLANG_SEVERITY_ERROR);
+    pub const FATAL: Self = Self(sys::SlangSeverity_SLANG_SEVERITY_FATAL);
+    pub const INTERNAL: Self = Self(sys::SlangSeverity_SLANG_SEVERITY_INTERNAL);
+}
+
+bitflags! {
+    #[repr(transparent)]
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct DiagnosticFlags : u32 {
+        const VERBOSE_PATHS = 1;
+        const TREAT_WARNINGS_AS_ERRORS = 2;
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct DebugInfoFormat(u32);
+
+impl DebugInfoFormat {
+    pub const DEFAULT: Self = Self(sys::SlangDebugInfoFormat_SLANG_DEBUG_INFO_FORMAT_DEFAULT);
+    pub const C7: Self = Self(sys::SlangDebugInfoFormat_SLANG_DEBUG_INFO_FORMAT_C7);
+    pub const PDB: Self = Self(sys::SlangDebugInfoFormat_SLANG_DEBUG_INFO_FORMAT_PDB);
+    pub const STABS: Self = Self(sys::SlangDebugInfoFormat_SLANG_DEBUG_INFO_FORMAT_STABS);
+    pub const COFF: Self = Self(sys::SlangDebugInfoFormat_SLANG_DEBUG_INFO_FORMAT_COFF);
+    pub const DWARF: Self = Self(sys::SlangDebugInfoFormat_SLANG_DEBUG_INFO_FORMAT_DWARF);
+    pub const COUNT_OF: Self = Self(sys::SlangDebugInfoFormat_SLANG_DEBUG_INFO_FORMAT_COUNT_OF);
+}
+
 pub struct CompileRequest(sys::ICompileRequest);
 
-impl CompileRequest {}
+impl CompileRequest {
+    #[inline]
+    pub unsafe fn set_file_system(&mut self, file_system: &mut FileSystem) {
+        vtable_call!(self.0, setFileSystem(&mut file_system.0))
+    }
+
+    #[inline]
+    pub fn set_compile_flags(&mut self, flags: CompilerFlags) {
+        unsafe { vtable_call!(self.0, setCompileFlags(mem::transmute(flags))) }
+    }
+
+    #[inline]
+    pub fn get_compile_flags(&self) -> CompilerFlags {
+        unsafe { mem::transmute(vtable_call!(self.0, getCompileFlags())) }
+    }
+
+    #[inline]
+    pub unsafe fn set_dump_intermediates(&mut self, enable: i32) {
+        vtable_call!(self.0, setDumpIntermediates(enable))
+    }
+
+    #[inline]
+    pub unsafe fn set_dump_intermediate_prefix(&mut self, prefix: &str) {
+        let prefix = CString::new(prefix).unwrap();
+        vtable_call!(self.0, setDumpIntermediatePrefix(prefix.as_ptr()))
+    }
+
+    #[inline]
+    pub unsafe fn set_line_directive_mode(&mut self, mode: LineDirectiveMode) {
+        vtable_call!(self.0, setLineDirectiveMode(mode.0))
+    }
+
+    #[inline]
+    pub unsafe fn set_code_gen_target(&mut self, target: CompileTarget) {
+        vtable_call!(self.0, setCodeGenTarget(target.0))
+    }
+
+    #[inline]
+    pub unsafe fn add_code_gen_target(&mut self, target: CompileTarget) -> i32 {
+        vtable_call!(self.0, addCodeGenTarget(target.0))
+    }
+
+    #[inline]
+    pub unsafe fn set_target_profile(&mut self, target_index: i32, profile: ProfileID) {
+        vtable_call!(self.0, setTargetProfile(target_index, profile.0))
+    }
+
+    #[inline]
+    pub unsafe fn set_target_flags(&mut self, target_index: i32, flags: TargetFlags) {
+        vtable_call!(self.0, setTargetFlags(target_index, mem::transmute(flags)))
+    }
+
+    #[inline]
+    pub unsafe fn set_target_floating_point_mode(
+        &mut self,
+        target_index: i32,
+        mode: FloatingPointMode,
+    ) {
+        vtable_call!(self.0, setTargetFloatingPointMode(target_index, mode.0))
+    }
+
+    #[inline]
+    pub unsafe fn set_target_matrix_layout_mode(
+        &mut self,
+        target_index: i32,
+        mode: MatrixLayoutMode,
+    ) {
+        vtable_call!(self.0, setTargetMatrixLayoutMode(target_index, mode.0))
+    }
+
+    #[inline]
+    pub unsafe fn set_matrix_layout_mode(&mut self, mode: MatrixLayoutMode) {
+        vtable_call!(self.0, setMatrixLayoutMode(mode.0))
+    }
+
+    #[inline]
+    pub unsafe fn set_debug_info_level(&mut self, level: DebugInfoLevel) {
+        vtable_call!(self.0, setDebugInfoLevel(level.0))
+    }
+
+    #[inline]
+    pub unsafe fn set_optimization_level(&mut self, level: OptimizationLevel) {
+        vtable_call!(self.0, setOptimizationLevel(level.0))
+    }
+
+    #[inline]
+    pub unsafe fn set_output_container_format(&mut self, format: ContainerFormat) {
+        vtable_call!(self.0, setOutputContainerFormat(format.0))
+    }
+
+    #[inline]
+    pub unsafe fn set_pass_through(&mut self, pass_through: PassThrough) {
+        vtable_call!(self.0, setPassThrough(pass_through.0))
+    }
+
+    #[inline]
+    pub unsafe fn set_diagnostic_callback(
+        &mut self,
+        callback: DiagnosticCallback,
+        user_data: *const c_void,
+    ) {
+        vtable_call!(
+            self.0,
+            setDiagnosticCallback(mem::transmute(callback), user_data)
+        )
+    }
+
+    #[inline]
+    pub unsafe fn set_writer(&mut self, channel: WriterChannel, writer: Writer) {
+        vtable_call!(self.0, setWriter(channel.0, writer.0.as_raw()))
+    }
+
+    #[inline]
+    pub unsafe fn get_writer(&mut self, channel: WriterChannel) -> Writer {
+        let mut writer = vtable_call!(self.0, getWriter(channel.0));
+        Writer(sys::IWriter::from_raw(writer.cast()))
+    }
+
+    #[inline]
+    pub unsafe fn add_search_path(&mut self, search_dir: &str) {
+        let search_dir = CString::new(search_dir).unwrap();
+
+        vtable_call!(self.0, addSearchPath(search_dir.as_ptr()))
+    }
+
+    #[inline]
+    pub unsafe fn add_preprocessor_define(&mut self, key: &str, value: &str) {
+        let key = CString::new(key).unwrap();
+        let value = CString::new(value).unwrap();
+
+        vtable_call!(self.0, addPreprocessorDefine(key.as_ptr(), value.as_ptr()))
+    }
+
+    #[inline]
+    pub unsafe fn process_command_line_arguments(&mut self, args: &[&str]) -> utils::Result<()> {
+        let args = args
+            .into_iter()
+            .map(|arg| CString::new(*arg).unwrap())
+            .collect::<Vec<_>>();
+        let arg_ptrs = args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
+
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            processCommandLineArguments(arg_ptrs.as_ptr(), arg_ptrs.len() as _)
+        ))
+    }
+
+    #[inline]
+    pub unsafe fn add_translation_unit(&mut self, language: SourceLanguage, name: &str) -> i32 {
+        let name = CString::new(name).unwrap();
+        vtable_call!(self.0, addTranslationUnit(language.0, name.as_ptr()))
+    }
+
+    #[inline]
+    pub unsafe fn set_default_module_name(&mut self, default_module_name: &str) {
+        let default_module_name = CString::new(default_module_name).unwrap();
+        vtable_call!(self.0, setDefaultModuleName(default_module_name.as_ptr()))
+    }
+
+    #[inline]
+    pub unsafe fn add_translation_unit_preprocessor_define(
+        &mut self,
+        translation_unit_index: i32,
+        key: &str,
+        value: &str,
+    ) {
+        let key = CString::new(key).unwrap();
+        let value = CString::new(value).unwrap();
+        vtable_call!(
+            self.0,
+            addTranslationUnitPreprocessorDefine(
+                translation_unit_index,
+                key.as_ptr(),
+                value.as_ptr()
+            )
+        )
+    }
+
+    #[inline]
+    pub unsafe fn add_translation_unit_source_file(
+        &mut self,
+        translation_unit_index: i32,
+        path: &str,
+    ) {
+        let path = CString::new(path).unwrap();
+        vtable_call!(
+            self.0,
+            addTranslationUnitSourceFile(translation_unit_index, path.as_ptr())
+        )
+    }
+
+    #[inline]
+    pub unsafe fn add_translation_unit_source_string(
+        &mut self,
+        translation_unit_index: i32,
+        path: &str,
+        source: &str,
+    ) {
+        let path = CString::new(path).unwrap();
+        let source = CString::new(source).unwrap();
+        vtable_call!(
+            self.0,
+            addTranslationUnitSourceString(translation_unit_index, path.as_ptr(), source.as_ptr())
+        )
+    }
+
+    #[inline]
+    pub unsafe fn add_library_reference(
+        &mut self,
+        base_path: &str,
+        lib_data: &[u8],
+    ) -> utils::Result<()> {
+        let base_path = CString::new(base_path).unwrap();
+
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            addLibraryReference(
+                base_path.as_ptr(),
+                lib_data.as_ptr().cast(),
+                lib_data.len() as _
+            )
+        ))
+    }
+
+    #[inline]
+    pub unsafe fn add_translation_unit_source_string_span(
+        &mut self,
+        translation_unit_index: i32,
+        path: &str,
+        source: &str,
+    ) {
+        let path = CString::new(path).unwrap();
+        let source_c = CString::new(source).unwrap();
+        vtable_call!(
+            self.0,
+            addTranslationUnitSourceStringSpan(
+                translation_unit_index,
+                path.as_ptr(),
+                source_c.as_ptr(),
+                source_c.as_ptr().add(source.len())
+            )
+        )
+    }
+
+    #[inline]
+    pub unsafe fn add_translation_unit_source_blob(
+        &mut self,
+        translation_unit_index: i32,
+        path: &str,
+        source_blob: &mut Blob,
+    ) {
+        let path = CString::new(path).unwrap();
+        vtable_call!(
+            self.0,
+            addTranslationUnitSourceBlob(
+                translation_unit_index,
+                path.as_ptr(),
+                source_blob.0.as_raw()
+            )
+        )
+    }
+
+    #[inline]
+    pub unsafe fn add_entry_point(
+        &mut self,
+        translation_unit_index: i32,
+        name: *const c_char,
+        stage: Stage,
+    ) -> i32 {
+        vtable_call!(self.0, addEntryPoint(translation_unit_index, name, stage.0))
+    }
+
+    #[inline]
+    pub unsafe fn add_entry_point_ex(
+        &mut self,
+        translation_unit_index: i32,
+        name: &str,
+        stage: Stage,
+        generic_args: &[&str],
+    ) -> i32 {
+        let name = CString::new(name).unwrap();
+        let args = generic_args
+            .into_iter()
+            .map(|arg| CString::new(*arg).unwrap())
+            .collect::<Vec<_>>();
+        let arg_ptrs = args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
+
+        vtable_call!(
+            self.0,
+            addEntryPointEx(
+                translation_unit_index,
+                name.as_ptr(),
+                stage.0,
+                arg_ptrs.len() as _,
+                arg_ptrs.as_ptr()
+            )
+        )
+    }
+
+    #[inline]
+    pub unsafe fn set_global_generic_args(&mut self, generic_args: &[&str]) -> utils::Result<()> {
+        let args = generic_args
+            .into_iter()
+            .map(|arg| CString::new(*arg).unwrap())
+            .collect::<Vec<_>>();
+        let arg_ptrs = args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
+
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            setGlobalGenericArgs(arg_ptrs.len() as _, arg_ptrs.as_ptr())
+        ))
+    }
+
+    #[inline]
+    pub unsafe fn set_type_name_for_global_existential_type_param(
+        &mut self,
+        slot_index: i32,
+        type_name: &str,
+    ) -> utils::Result<()> {
+        let type_name = CString::new(type_name).unwrap();
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            setTypeNameForGlobalExistentialTypeParam(slot_index, type_name.as_ptr())
+        ))
+    }
+
+    #[inline]
+    pub unsafe fn set_type_name_for_entry_point_existential_type_param(
+        &mut self,
+        entry_point_index: i32,
+        slot_index: i32,
+        type_name: &str,
+    ) -> utils::Result<()> {
+        let type_name = CString::new(type_name).unwrap();
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            setTypeNameForEntryPointExistentialTypeParam(
+                entry_point_index,
+                slot_index,
+                type_name.as_ptr()
+            )
+        ))
+    }
+
+    #[inline]
+    pub unsafe fn set_allow_glsl_input(&mut self, value: bool) {
+        vtable_call!(self.0, setAllowGLSLInput(value))
+    }
+
+    #[inline]
+    pub unsafe fn compile(&mut self) -> utils::Result<()> {
+        utils::result_from_ffi(vtable_call!(self.0, compile()))
+    }
+
+    #[inline]
+    pub unsafe fn get_diagnostic_output(&mut self) -> String {
+        let c_str = CStr::from_ptr(vtable_call!(self.0, getDiagnosticOutput()));
+
+        c_str.to_string_lossy().to_string()
+    }
+
+    #[inline]
+    pub unsafe fn get_diagnostic_output_blob(&mut self) -> utils::Result<IBlob> {
+        let mut blob = ptr::null_mut();
+        utils::result_from_ffi(vtable_call!(self.0, getDiagnosticOutputBlob(&mut blob)))?;
+
+        Ok(IBlob::from_raw(blob))
+    }
+
+    #[inline]
+    pub unsafe fn get_dependency_file_count(&mut self) -> i32 {
+        vtable_call!(self.0, getDependencyFileCount())
+    }
+
+    #[inline]
+    pub unsafe fn get_dependency_file_path(&mut self, index: i32) -> utils::Result<String> {
+        let c_str = vtable_call!(self.0, getDependencyFilePath(index));
+        if c_str.is_null() {
+            Err(1)
+        } else {
+            Ok(CStr::from_ptr(c_str).to_string_lossy().to_string())
+        }
+    }
+
+    #[inline]
+    pub unsafe fn get_translation_unit_count(&mut self) -> i32 {
+        vtable_call!(self.0, getTranslationUnitCount())
+    }
+
+    ///
+    ///
+
+    #[inline]
+    pub unsafe fn get_entry_point_source(
+        &mut self,
+        entry_point_index: i32,
+    ) -> utils::Result<String> {
+        let c_str = vtable_call!(self.0, getEntryPointSource(entry_point_index));
+        if c_str.is_null() {
+            Err(1)
+        } else {
+            Ok(CStr::from_ptr(c_str).to_string_lossy().to_string())
+        }
+    }
+
+    #[inline]
+    pub unsafe fn get_entry_point_code(
+        &mut self,
+        entry_point_index: i32,
+        out_size: *mut usize,
+    ) -> &[u8] {
+        let mut len = 0;
+        let data = vtable_call!(self.0, getEntryPointCode(entry_point_index, &mut len));
+        slice::from_raw_parts(data.cast(), len)
+    }
+
+    #[inline]
+    pub unsafe fn get_entry_point_code_blob(
+        &mut self,
+        entry_point_index: i32,
+        target_index: i32,
+    ) -> utils::Result<Blob> {
+        let mut blob = ptr::null_mut();
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            getEntryPointCodeBlob(entry_point_index, target_index, &mut blob)
+        ))?;
+
+        Ok(Blob(IBlob::from_raw(blob)))
+    }
+
+    #[inline]
+    pub unsafe fn get_entry_point_host_callable(
+        &mut self,
+        entry_point_index: i32,
+        target_index: i32,
+    ) -> utils::Result<SharedLibrary> {
+        let mut library = ptr::null_mut();
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            getEntryPointHostCallable(entry_point_index, target_index, &mut library)
+        ))?;
+        Ok(SharedLibrary(ISharedLibrary::from_raw(library)))
+    }
+
+    #[inline]
+    pub unsafe fn get_target_code_blob(&mut self, target_index: i32) -> utils::Result<Blob> {
+        let mut blob = ptr::null_mut();
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            getTargetCodeBlob(target_index, &mut blob)
+        ))?;
+
+        Ok(Blob(IBlob::from_raw(blob)))
+    }
+
+    #[inline]
+    pub unsafe fn get_target_host_callable(
+        &mut self,
+        target_index: i32,
+    ) -> utils::Result<SharedLibrary> {
+        let mut library = ptr::null_mut();
+
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            getTargetHostCallable(target_index, &mut library)
+        ))?;
+
+        Ok(SharedLibrary(ISharedLibrary::from_raw(library)))
+    }
+
+    #[inline]
+    pub unsafe fn get_compile_request_code(&mut self) -> &[u8] {
+        let mut len = 0;
+        let data = vtable_call!(self.0, getCompileRequestCode(&mut len));
+        slice::from_raw_parts(data.cast(), len)
+    }
+
+    #[inline]
+    pub unsafe fn get_compile_request_result_as_file_system(&mut self) -> MutableFileSystem {
+        let system = vtable_call!(self.0, getCompileRequestResultAsFileSystem());
+        MutableFileSystem(IMutableFileSystem::from_raw(system))
+    }
+
+    #[inline]
+    pub unsafe fn get_compile_request_container_blob(&mut self) -> utils::Result<Blob> {
+        let mut blob = ptr::null_mut();
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            getCompileRequestContainerBlob(&mut blob)
+        ))?;
+        Ok(Blob(IBlob::from_raw(blob)))
+    }
+
+    #[inline]
+    pub unsafe fn get_container_code(&mut self) -> utils::Result<Blob> {
+        let mut blob = ptr::null_mut();
+        utils::result_from_ffi(vtable_call!(self.0, getContainerCode(&mut blob)))?;
+        Ok(Blob(IBlob::from_raw(blob)))
+    }
+
+    #[inline]
+    pub unsafe fn load_repro(
+        &mut self,
+        file_system: &mut FileSystem,
+        data: *const c_void,
+        size: usize,
+    ) -> utils::Result<()> {
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            loadRepro(&mut file_system.0, data, size)
+        ))
+    }
+
+    #[inline]
+    pub unsafe fn save_repro(&mut self) -> utils::Result<Blob> {
+        let mut blob = ptr::null_mut();
+        utils::result_from_ffi((vtable_call!(self.0, saveRepro(&mut blob))))?;
+        Ok(Blob(IBlob::from_raw(blob)))
+    }
+
+    #[inline]
+    pub unsafe fn enable_repro_capture(&mut self) -> utils::Result<()> {
+        utils::result_from_ffi(vtable_call!(self.0, enableReproCapture()))
+    }
+
+    #[inline]
+    pub unsafe fn get_linked_program(&mut self) -> utils::Result<ComponentType> {
+        let mut component = ptr::null_mut();
+        utils::result_from_ffi(vtable_call!(self.0, getLinkedProgram(&mut component)))?;
+        Ok(ComponentType(IComponentType::from_raw(component)))
+    }
+
+    #[inline]
+    pub unsafe fn get_program(&mut self) -> utils::Result<ComponentType> {
+        let mut component = ptr::null_mut();
+        utils::result_from_ffi(vtable_call!(self.0, getProgram(&mut component)))?;
+        Ok(ComponentType(IComponentType::from_raw(component)))
+    }
+
+    #[inline]
+    pub unsafe fn get_entry_point(
+        &mut self,
+        entry_point_index: i64,
+    ) -> utils::Result<ComponentType> {
+        let mut component = ptr::null_mut();
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            getEntryPoint(entry_point_index, &mut component)
+        ))?;
+        Ok(ComponentType(IComponentType::from_raw(component)))
+    }
+
+    #[inline]
+    pub unsafe fn get_module(&mut self, translation_unit_index: i64) -> utils::Result<Module> {
+        let mut module = ptr::null_mut();
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            getModule(translation_unit_index, &mut module)
+        ))?;
+        Ok(Module(IModule::from_raw(module)))
+    }
+
+    #[inline]
+    pub unsafe fn get_session(&mut self) -> utils::Result<Session> {
+        let mut session = ptr::null_mut();
+        utils::result_from_ffi(vtable_call!(self.0, getSession(&mut session)))?;
+        Ok(Session(ISession::from_raw(session)))
+    }
+
+    //TODO: replace slang reflection with Reflection, I can't find it in header
+    #[inline]
+    pub unsafe fn get_reflection(&mut self) -> *mut SlangReflection {
+        vtable_call!(self.0, getReflection())
+    }
+
+    #[inline]
+    pub unsafe fn set_command_line_compiler_mode(&mut self) {
+        vtable_call!(self.0, setCommandLineCompilerMode())
+    }
+
+    #[inline]
+    pub unsafe fn add_target_capability(
+        &mut self,
+        target_index: i64,
+        capability: CapabilityID,
+    ) -> utils::Result<()> {
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            addTargetCapability(target_index, capability.0)
+        ))
+    }
+
+    #[inline]
+    pub unsafe fn get_program_with_entry_points(&mut self) -> utils::Result<ComponentType> {
+        let mut out_program = ptr::null_mut();
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            getProgramWithEntryPoints(&mut out_program)
+        ))?;
+
+        Ok(ComponentType(IComponentType::from_raw(out_program)))
+    }
+
+    #[inline]
+    pub unsafe fn is_parameter_location_used(
+        &self,
+        entry_point_index: i64,
+        target_index: i64,
+        category: ParameterCategory,
+        space_index: u64,
+        register_index: u64,
+    ) -> utils::Result<bool> {
+        let mut used = false;
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            isParameterLocationUsed(
+                entry_point_index,
+                target_index,
+                category.0,
+                space_index,
+                register_index,
+                &mut used
+            )
+        ))?;
+        Ok(used)
+    }
+
+    #[inline]
+    pub unsafe fn set_target_line_directive_mode(
+        &mut self,
+        target_index: i64,
+        mode: SourceLanguage,
+    ) {
+        vtable_call!(
+            self.0,
+            setTargetLineDirectiveMode(target_index, mode.0 as _)
+        )
+    }
+
+    #[inline]
+    pub unsafe fn set_target_force_glsl_scalar_buffer_layout(
+        &mut self,
+        target_index: i64,
+        force_scalar_layout: bool,
+    ) {
+        vtable_call!(
+            self.0,
+            setTargetForceGLSLScalarBufferLayout(target_index, force_scalar_layout)
+        )
+    }
+
+    #[inline]
+    pub unsafe fn override_diagnostic_severity(
+        &mut self,
+        message_id: i64,
+        override_severity: Severity,
+    ) {
+        vtable_call!(
+            self.0,
+            overrideDiagnosticSeverity(message_id, override_severity.0)
+        )
+    }
+
+    #[inline]
+    pub unsafe fn get_diagnostic_flags(&mut self) -> DiagnosticFlags {
+        mem::transmute(vtable_call!(self.0, getDiagnosticFlags()))
+    }
+
+    #[inline]
+    pub unsafe fn set_diagnostic_flags(&mut self, flags: DiagnosticFlags) {
+        vtable_call!(self.0, setDiagnosticFlags(mem::transmute(flags)))
+    }
+
+    #[inline]
+    pub unsafe fn set_debug_info_format(&mut self, debug_format: DebugInfoFormat) {
+        vtable_call!(self.0, setDebugInfoFormat(mem::transmute(debug_format)))
+    }
+
+    #[inline]
+    pub unsafe fn set_enable_effect_annotations(&mut self, value: bool) {
+        vtable_call!(self.0, setEnableEffectAnnotations(value))
+    }
+
+    #[inline]
+    pub unsafe fn set_report_downstream_time(&mut self, value: bool) {
+        vtable_call!(self.0, setReportDownstreamTime(value))
+    }
+
+    #[inline]
+    pub unsafe fn set_report_perf_benchmark(&mut self, value: bool) {
+        vtable_call!(self.0, setReportPerfBenchmark(value))
+    }
+
+    #[inline]
+    pub unsafe fn set_skip_spirv_validation(&mut self, value: bool) {
+        vtable_call!(self.0, setSkipSPIRVValidation(value))
+    }
+}

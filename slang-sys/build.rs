@@ -30,6 +30,7 @@ fn generate_bindings() {
 fn main() {
     generate_bindings();
 
-    println!("cargo:rustc-link-search=native={}", "C:/Users/beastle9end/Documents/Programs/slang");
+    println!("cargo:rustc-link-lib=slang");
+    println!("cargo:rustc-link-lib=slang");
     println!("cargo:rustc-link-lib=static=slang");
 }
