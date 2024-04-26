@@ -31,6 +31,5 @@ fn main() {
     generate_bindings();
 
     println!("cargo:rustc-link-lib=slang");
-    println!("cargo:rustc-link-lib=slang");
     println!("cargo:rustc-link-lib=static=slang");
 }

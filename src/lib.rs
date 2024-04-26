@@ -4,12 +4,7 @@ use std::{
 };
 
 use bitflags::bitflags;
-use slang_sys::{
-    vtable_call, IBlob, IComponentType, IModule, IMutableFileSystem, ISession, ISharedLibrary,
-    ISlangSharedLibrary, Interface, SlangDebugInfoLevel, SlangLineDirectiveMode,
-    SlangLineDirectiveModeIntegral, SlangOptimizationLevel, SlangParameterCategory,
-    SlangReflection, SlangSeverity, _bindgen_ty_2,
-};
+use slang_sys::{vtable_call, Interface, SlangReflection};
 
 use crate::utils::assert_size_and_align;
 
@@ -990,11 +985,11 @@ impl CompileRequest {
     }
 
     #[inline]
-    pub unsafe fn get_diagnostic_output_blob(&mut self) -> utils::Result<IBlob> {
+    pub unsafe fn get_diagnostic_output_blob(&mut self) -> utils::Result<Blob> {
         let mut blob = ptr::null_mut();
         utils::result_from_ffi(vtable_call!(self.0, getDiagnosticOutputBlob(&mut blob)))?;
 
-        Ok(IBlob::from_raw(blob))
+        Ok(Blob(sys::IBlob::from_raw(blob)))
     }
 
     #[inline]
@@ -1017,7 +1012,6 @@ impl CompileRequest {
         vtable_call!(self.0, getTranslationUnitCount())
     }
 
-    ///
     ///
 
     #[inline]
@@ -1056,7 +1050,7 @@ impl CompileRequest {
             getEntryPointCodeBlob(entry_point_index, target_index, &mut blob)
         ))?;
 
-        Ok(Blob(IBlob::from_raw(blob)))
+        Ok(Blob(sys::IBlob::from_raw(blob)))
     }
 
     #[inline]
@@ -1070,7 +1064,7 @@ impl CompileRequest {
             self.0,
             getEntryPointHostCallable(entry_point_index, target_index, &mut library)
         ))?;
-        Ok(SharedLibrary(ISharedLibrary::from_raw(library)))
+        Ok(SharedLibrary(sys::ISharedLibrary::from_raw(library)))
     }
 
     #[inline]
@@ -1081,7 +1075,7 @@ impl CompileRequest {
             getTargetCodeBlob(target_index, &mut blob)
         ))?;
 
-        Ok(Blob(IBlob::from_raw(blob)))
+        Ok(Blob(sys::IBlob::from_raw(blob)))
     }
 
     #[inline]
@@ -1096,7 +1090,7 @@ impl CompileRequest {
             getTargetHostCallable(target_index, &mut library)
         ))?;
 
-        Ok(SharedLibrary(ISharedLibrary::from_raw(library)))
+        Ok(SharedLibrary(sys::ISharedLibrary::from_raw(library)))
     }
 
     #[inline]
@@ -1109,7 +1103,7 @@ impl CompileRequest {
     #[inline]
     pub unsafe fn get_compile_request_result_as_file_system(&mut self) -> MutableFileSystem {
         let system = vtable_call!(self.0, getCompileRequestResultAsFileSystem());
-        MutableFileSystem(IMutableFileSystem::from_raw(system))
+        MutableFileSystem(sys::IMutableFileSystem::from_raw(system))
     }
 
     #[inline]
@@ -1119,14 +1113,14 @@ impl CompileRequest {
             self.0,
             getCompileRequestContainerBlob(&mut blob)
         ))?;
-        Ok(Blob(IBlob::from_raw(blob)))
+        Ok(Blob(sys::IBlob::from_raw(blob)))
     }
 
     #[inline]
     pub unsafe fn get_container_code(&mut self) -> utils::Result<Blob> {
         let mut blob = ptr::null_mut();
         utils::result_from_ffi(vtable_call!(self.0, getContainerCode(&mut blob)))?;
-        Ok(Blob(IBlob::from_raw(blob)))
+        Ok(Blob(sys::IBlob::from_raw(blob)))
     }
 
     #[inline]
@@ -1146,7 +1140,7 @@ impl CompileRequest {
     pub unsafe fn save_repro(&mut self) -> utils::Result<Blob> {
         let mut blob = ptr::null_mut();
         utils::result_from_ffi((vtable_call!(self.0, saveRepro(&mut blob))))?;
-        Ok(Blob(IBlob::from_raw(blob)))
+        Ok(Blob(sys::IBlob::from_raw(blob)))
     }
 
     #[inline]
@@ -1158,14 +1152,14 @@ impl CompileRequest {
     pub unsafe fn get_linked_program(&mut self) -> utils::Result<ComponentType> {
         let mut component = ptr::null_mut();
         utils::result_from_ffi(vtable_call!(self.0, getLinkedProgram(&mut component)))?;
-        Ok(ComponentType(IComponentType::from_raw(component)))
+        Ok(ComponentType(sys::IComponentType::from_raw(component)))
     }
 
     #[inline]
     pub unsafe fn get_program(&mut self) -> utils::Result<ComponentType> {
         let mut component = ptr::null_mut();
         utils::result_from_ffi(vtable_call!(self.0, getProgram(&mut component)))?;
-        Ok(ComponentType(IComponentType::from_raw(component)))
+        Ok(ComponentType(sys::IComponentType::from_raw(component)))
     }
 
     #[inline]
@@ -1178,7 +1172,7 @@ impl CompileRequest {
             self.0,
             getEntryPoint(entry_point_index, &mut component)
         ))?;
-        Ok(ComponentType(IComponentType::from_raw(component)))
+        Ok(ComponentType(sys::IComponentType::from_raw(component)))
     }
 
     #[inline]
@@ -1188,14 +1182,14 @@ impl CompileRequest {
             self.0,
             getModule(translation_unit_index, &mut module)
         ))?;
-        Ok(Module(IModule::from_raw(module)))
+        Ok(Module(sys::IModule::from_raw(module)))
     }
 
     #[inline]
     pub unsafe fn get_session(&mut self) -> utils::Result<Session> {
         let mut session = ptr::null_mut();
         utils::result_from_ffi(vtable_call!(self.0, getSession(&mut session)))?;
-        Ok(Session(ISession::from_raw(session)))
+        Ok(Session(sys::ISession::from_raw(session)))
     }
 
     //TODO: replace slang reflection with Reflection, I can't find it in header
@@ -1229,7 +1223,7 @@ impl CompileRequest {
             getProgramWithEntryPoints(&mut out_program)
         ))?;
 
-        Ok(ComponentType(IComponentType::from_raw(out_program)))
+        Ok(ComponentType(sys::IComponentType::from_raw(out_program)))
     }
 
     #[inline]
