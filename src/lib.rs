@@ -376,8 +376,9 @@ impl GlobalSession {
     }
 
     #[inline]
-    pub unsafe fn find_profile(&self, name: *const c_char) -> ProfileID {
-        ProfileID(unsafe { vtable_call!(self.0, findProfile(name)) })
+    pub unsafe fn find_profile(&self, name: &str) -> ProfileID {
+        let name = CString::new(name).unwrap();
+        ProfileID(unsafe { vtable_call!(self.0, findProfile(name.as_ptr())) })
     }
 
     #[inline]

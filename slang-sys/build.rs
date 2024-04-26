@@ -30,6 +30,13 @@ fn generate_bindings() {
 fn main() {
     generate_bindings();
 
+    //TODO: do this the right way
+
+    #[cfg(target_os = "windows")]
+    println!("cargo:rustc-link-search=native={}", "C:/Users/beastle9end/Documents/Programs/slang");
+
+    #[cfg(target_os = "macos")]
     println!("cargo:rustc-link-lib=slang");
+
     println!("cargo:rustc-link-lib=static=slang");
 }
