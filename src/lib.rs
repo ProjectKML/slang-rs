@@ -1110,11 +1110,7 @@ impl CompileRequest {
     }
 
     #[inline]
-    pub unsafe fn get_entry_point_code(
-        &mut self,
-        entry_point_index: i32,
-        out_size: *mut usize,
-    ) -> &[u8] {
+    pub unsafe fn get_entry_point_code(&mut self, entry_point_index: i32) -> &[u8] {
         let mut len = 0;
         let data = vtable_call!(self.0, getEntryPointCode(entry_point_index, &mut len));
         slice::from_raw_parts(data.cast(), len)

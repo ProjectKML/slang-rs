@@ -144,10 +144,21 @@ interface!(IMutableFileSystem, ISlangMutableFileSystem, [0xa058675c, 0x1d65, 0x4
 });
 
 interface!(IComponentType, [0x5bc42be8, 0x5c50, 0x4929, [0x9e, 0x5e, 0xd1, 0x5e, 0x7c, 0x24, 0x1, 0x5f]], {
-
+	getSession: unsafe extern "stdcall" fn(*mut c_void) -> *mut ISession,
+	getLayout: unsafe extern "stdcall" fn(*mut c_void, target_index: SlangInt, out_diagnostics: *mut *mut IBlob) -> *mut slang_ProgramLayout,
+	getSpecializationParamCount: unsafe extern "stdcall" fn(*mut c_void) -> SlangInt,
+	getEntryPointCode: unsafe extern "stdcall" fn(*mut c_void, entry_point_index: SlangInt, target_index: SlangInt, out_code: *mut *mut IBlob, out_diagnostics: *mut *mut IBlob) -> SlangResult,
+	getResultAsFileSystem: unsafe extern "stdcall" fn(*mut c_void, entry_point_index: SlangInt, target_index: SlangInt, out_file_system: *mut *mut ISlangMutableFileSystem) -> SlangResult,
+	getEntryPointHash: unsafe extern "stdcall" fn(*mut c_void, entry_point_index: SlangInt, target_index: SlangInt, out_hash: *mut *mut IBlob),
+	specialize: unsafe extern "stdcall" fn(*mut c_void, specialization_args: *const slang_SpecializationArg, specialization_arg_count: SlangInt, out_specialized_component_type: *mut *mut IComponentType, out_diagnostics: *mut *mut ISlangBlob) -> SlangResult,
+	link: unsafe extern "stdcall" fn(*mut c_void, out_linked_component_type: *mut *mut IComponentType, out_diagnostics: *mut *mut ISlangBlob) -> SlangResult,
+	getEntryPointHostCallable: unsafe extern "stdcall" fn(*mut c_void, entry_point_index: SlangInt, target_index: SlangInt, out_shared_library: *mut *mut ISlangSharedLibrary, out_diagnostics: *mut *mut IBlob) -> SlangResult,
+	renameEntryPoint: unsafe extern "stdcall" fn(*mut c_void, new_name: *const c_char, out_entry_point: *mut *mut IComponentType) -> SlangResult,
+	linkWithOptions: unsafe extern "stdcall" fn(*mut c_void, out_linked_component_type: *mut *mut IComponentType, compiler_option_entry_count: u32, compiler_option_entries: *mut slang_CompilerOptionEntry, out_diagnostics: *mut *mut ISlangBlob) -> SlangResult,
 });
 
 interface!(IModule, [0xc720e64, 0x8722, 0x4d31, [0x89, 0x90, 0x63, 0x8a, 0x98, 0xb1, 0xc2, 0x79]], {
+	IComponentType_vtbl: IComponentTypeVtbl,
 	findEntryPointByName: unsafe extern "stdcall" fn(*mut c_void, name: *const c_char, outEntryPoint: *mut *mut slang_IEntryPoint) -> SlangResult,
 	getDefinedEntryPointCount: unsafe extern "stdcall" fn(*mut c_void) -> SlangInt32,
 	getDefinedEntryPoint: unsafe extern "stdcall" fn(*mut c_void, index: SlangInt32, outEntryPoint: *mut *mut slang_IEntryPoint) -> SlangResult,

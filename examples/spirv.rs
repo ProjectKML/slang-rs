@@ -1,4 +1,4 @@
-use std::mem;
+use std::{fs, mem};
 
 use slang::{CompileTarget, GlobalSession, SessionDesc, SourceLanguage, TargetDesc, TargetFlags};
 
@@ -53,7 +53,12 @@ void main() {
 
         compile_request.compile().unwrap();
 
-        let blob = compile_request.get_module(translation_unit as _).unwrap();
+        let mut module = compile_request.get_module(translation_unit as _).unwrap();
+        let count = module.get_defined_entry_point_count();
+        println!("{}", count);
+
+        //let code = compile_request.get_entry_point_code(0);
+        //fs::write("test.spv", code).unwrap();
 
         //TODO: we need to implement blob
     }

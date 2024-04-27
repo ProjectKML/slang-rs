@@ -33,10 +33,11 @@ fn main() {
     //TODO: do this the right way
 
     #[cfg(target_os = "windows")]
-    println!("cargo:rustc-link-search=native={}", "C:/Users/beastle9end/Documents/Programs/slang");
+    {
+        println!("cargo:rustc-link-search=native={}", "C:/Users/beastle9end/Documents/Programs/slang");
+        println!("cargo:rustc-link-lib=static=slang");
+    }
 
     #[cfg(target_os = "macos")]
-    println!("cargo:rustc-link-lib=slang");
-
-    println!("cargo:rustc-link-lib=static=slang");
+    println!("cargo:rustc-link-lib=dylib=slang");
 }
