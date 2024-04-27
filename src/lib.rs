@@ -1185,16 +1185,6 @@ impl CompileRequest {
     }
 
     #[inline]
-    pub unsafe fn get_compile_request_container_blob(&mut self) -> utils::Result<Blob> {
-        let mut blob = ptr::null_mut();
-        utils::result_from_ffi(vtable_call!(
-            self.0,
-            getCompileRequestContainerBlob(&mut blob)
-        ))?;
-        Ok(Blob(sys::IBlob::from_raw(blob)))
-    }
-
-    #[inline]
     pub unsafe fn get_container_code(&mut self) -> utils::Result<Blob> {
         let mut blob = ptr::null_mut();
         utils::result_from_ffi(vtable_call!(self.0, getContainerCode(&mut blob)))?;
@@ -1224,13 +1214,6 @@ impl CompileRequest {
     #[inline]
     pub unsafe fn enable_repro_capture(&mut self) -> utils::Result<()> {
         utils::result_from_ffi(vtable_call!(self.0, enableReproCapture()))
-    }
-
-    #[inline]
-    pub unsafe fn get_linked_program(&mut self) -> utils::Result<ComponentType> {
-        let mut component = ptr::null_mut();
-        utils::result_from_ffi(vtable_call!(self.0, getLinkedProgram(&mut component)))?;
-        Ok(ComponentType(sys::IComponentType::from_raw(component)))
     }
 
     #[inline]

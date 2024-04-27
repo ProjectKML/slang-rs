@@ -47,8 +47,7 @@ struct MyValue {
 [numthreads(1, 1, 1)]
 void main() {
     InterlockedAdd(constants.my_ptr.value, 5);
-}
-        "#,
+}"#,
         );
 
         compile_request.compile().unwrap();
@@ -57,9 +56,10 @@ void main() {
         let count = module.get_defined_entry_point_count();
         println!("{}", count);
 
-        //let code = compile_request.get_entry_point_code(0);
-        //fs::write("test.spv", code).unwrap();
-
+        /*
+        let code = compile_request.get_entry_point_code(0);
+        fs::write("test.spv", code).unwrap();
+        */
         //TODO: we need to implement blob
     }
 }

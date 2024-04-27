@@ -1,20 +1,20 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 
-mod interface;
+use std::ffi::{c_char, c_int, c_void};
 
 pub use interface::*;
 
-use std::ffi::{c_char, c_int, c_void};
+mod interface;
 
 include!("../gen/bindings.rs");
 
 interface!(IUnknown, ISlangUnknown, [0x00000000, 0x0000, 0x0000, [0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46]], {
-	queryInterface: unsafe extern "C" fn(*mut c_void, *const SlangUUID, *mut *mut ::std::os::raw::c_void) -> SlangResult,
-	addRef: unsafe extern "C" fn(*mut c_void) -> u32,
-	release: unsafe extern "C" fn(*mut c_void) -> u32,
+	queryInterface: unsafe extern "stdcall" fn(*mut c_void, *const SlangUUID, *mut *mut ::std::os::raw::c_void) -> SlangResult,
+	addRef: unsafe extern "stdcall" fn(*mut c_void) -> u32,
+	release: unsafe extern "stdcall" fn(*mut c_void) -> u32,
 });
 
-interface!(IGlobalSession, [0xc140b5fd, 0x0c78, 0x452e, [0xba, 0x7c, 0x1a, 0x1e, 0x70, 0xc7, 0xf7, 0x1c]], {
+interface!(IGlobalSession, slang_IGlobalSession, [0xc140b5fd, 0x0c78, 0x452e, [0xba, 0x7c, 0x1a, 0x1e, 0x70, 0xc7, 0xf7, 0x1c]], {
 	createSession: unsafe extern "stdcall" fn(*mut c_void, desc: *const slang_SessionDesc, outSession: *mut *mut slang_ISession) -> SlangResult,
 	findProfile: unsafe extern "stdcall" fn(*mut c_void, name: *const c_char) -> SlangProfileID,
 	setDownstreamCompilerPath: unsafe extern "stdcall" fn(*mut c_void, passThrough: SlangPassThrough, path: *const c_char),
@@ -43,11 +43,11 @@ interface!(IGlobalSession, [0xc140b5fd, 0x0c78, 0x452e, [0xba, 0x7c, 0x1a, 0x1e,
 	getSessionDescDigest: unsafe extern "stdcall" fn(*mut c_void, sessionDesc: *const slang_SessionDesc, outBlob: *mut *mut ISlangBlob) -> SlangResult,
 });
 
-interface!(ISession, [0x67618701, 0xd116, 0x468f, [0xab, 0x3b, 0x47, 0x4b, 0xed, 0xce, 0xe, 0x3d]], {
+interface!(ISession, slang_ISession, [0x67618701, 0xd116, 0x468f, [0xab, 0x3b, 0x47, 0x4b, 0xed, 0xce, 0xe, 0x3d]], {
 
 });
 
-interface!(ICompileRequest, [0x96d33993, 0x317c, 0x4db5, [0xaf, 0xd8, 0x66, 0x6e, 0xe7, 0x72, 0x48, 0xe2]], {
+interface!(ICompileRequest, slang_ICompileRequest, [0x96d33993, 0x317c, 0x4db5, [0xaf, 0xd8, 0x66, 0x6e, 0xe7, 0x72, 0x48, 0xe2]], {
 	setFileSystem: unsafe extern "stdcall" fn(*mut c_void, fileSystem: *mut ISlangFileSystem),
 	setCompileFlags: unsafe extern "stdcall" fn(*mut c_void, flags: SlangCompileFlags),
 	getCompileFlags: unsafe extern "stdcall" fn(*mut c_void) -> SlangCompileFlags,
@@ -99,12 +99,10 @@ interface!(ICompileRequest, [0x96d33993, 0x317c, 0x4db5, [0xaf, 0xd8, 0x66, 0x6e
 	getTargetHostCallable: unsafe extern "stdcall" fn(*mut c_void, targetIndex: c_int, outSharedLibrary: *mut *mut ISlangSharedLibrary) -> SlangResult,
 	getCompileRequestCode: unsafe extern "stdcall" fn(*mut c_void, outSize: *mut usize) -> *const c_void,
 	getCompileRequestResultAsFileSystem: unsafe extern "stdcall" fn(*mut c_void) -> *mut ISlangMutableFileSystem,
-	getCompileRequestContainerBlob: unsafe extern "stdcall" fn(*mut c_void, outBlob: *mut *mut ISlangBlob) -> SlangResult,
 	getContainerCode: unsafe extern "stdcall" fn(*mut c_void, outBlob: *mut *mut ISlangBlob) -> SlangResult,
 	loadRepro: unsafe extern "stdcall" fn(*mut c_void, fileSystem: *mut ISlangFileSystem, data: *const c_void, size: usize) -> SlangResult,
 	saveRepro: unsafe extern "stdcall" fn(*mut c_void, outBlob: *mut *mut ISlangBlob) -> SlangResult,
 	enableReproCapture: unsafe extern "stdcall" fn(*mut c_void) -> SlangResult,
-	getLinkedProgram: unsafe extern "stdcall" fn(*mut c_void, outProgram: *mut *mut slang_IComponentType) -> SlangResult,
 	getProgram: unsafe extern "stdcall" fn(*mut c_void, outProgram: *mut *mut slang_IComponentType) -> SlangResult,
 	getEntryPoint: unsafe extern "stdcall" fn(*mut c_void, entryPointIndex: SlangInt, outEntryPoint: *mut *mut slang_IComponentType) -> SlangResult,
 	getModule: unsafe extern "stdcall" fn(*mut c_void, translationUnitIndex: SlangInt, outModule: *mut *mut slang_IModule) -> SlangResult,
@@ -130,20 +128,24 @@ interface!(IWriter, ISlangWriter, [0xec457f0e, 0x9add, 0x4e6b, [0x85, 0x1c, 0xd7
 
 });
 
-interface!(IBlob, [0x8BA5FB08, 0x5195, 0x40e2, [0xAC, 0x58, 0x0D, 0x98, 0x9C, 0x3A, 0x01, 0x02]], {
+interface!(IBlob, slang_IBlob, [0x8BA5FB08, 0x5195, 0x40e2, [0xAC, 0x58, 0x0D, 0x98, 0x9C, 0x3A, 0x01, 0x02]], {
 	getBufferPointer: unsafe extern "stdcall" fn(*mut c_void) -> *const c_void,
 	getBufferSize: unsafe extern "stdcall" fn(*mut c_void) -> usize,
 });
 
-interface!(ISharedLibrary, ISlangSharedLibrary, [0x9c9d5bc5, 0xeb61, 0x496f, [0x80, 0xd7, 0xd1, 0x47, 0xc4, 0xa2, 0x37, 0x30]], {
+interface!(ICastable, ISlangCastable, [0x87ede0e1, 0x4852, 0x44b0, [0x8b, 0xf2, 0xcb, 0x31, 0x87, 0x4d, 0xe2, 0x39]], {
+	castAs: unsafe extern "stdcall" fn(*mut c_void, guid: &SlangUUID) -> *mut c_void,
+});
+
+interface!(ISharedLibrary, ISlangSharedLibrary, [0x9c9d5bc5, 0xeb61, 0x496f, [0x80, 0xd7, 0xd1, 0x47, 0xc4, 0xa2, 0x37, 0x30]]: ICastable, {
 
 });
 
-interface!(IMutableFileSystem, ISlangMutableFileSystem, [0xa058675c, 0x1d65, 0x452a, [0x84, 0x58, 0xcc, 0xde, 0xd1, 0x42, 0x71, 0x5]], {
+interface!(IMutableFileSystem, ISlangMutableFileSystem, [0xa058675c, 0x1d65, 0x452a, [0x84, 0x58, 0xcc, 0xde, 0xd1, 0x42, 0x71, 0x5]], { //TODO: inheritance
 
 });
 
-interface!(IComponentType, [0x5bc42be8, 0x5c50, 0x4929, [0x9e, 0x5e, 0xd1, 0x5e, 0x7c, 0x24, 0x1, 0x5f]], {
+interface!(IComponentType, slang_IComponentType, [0x5bc42be8, 0x5c50, 0x4929, [0x9e, 0x5e, 0xd1, 0x5e, 0x7c, 0x24, 0x1, 0x5f]], {
 	getSession: unsafe extern "stdcall" fn(*mut c_void) -> *mut ISession,
 	getLayout: unsafe extern "stdcall" fn(*mut c_void, target_index: SlangInt, out_diagnostics: *mut *mut IBlob) -> *mut slang_ProgramLayout,
 	getSpecializationParamCount: unsafe extern "stdcall" fn(*mut c_void) -> SlangInt,
@@ -157,8 +159,7 @@ interface!(IComponentType, [0x5bc42be8, 0x5c50, 0x4929, [0x9e, 0x5e, 0xd1, 0x5e,
 	linkWithOptions: unsafe extern "stdcall" fn(*mut c_void, out_linked_component_type: *mut *mut IComponentType, compiler_option_entry_count: u32, compiler_option_entries: *mut slang_CompilerOptionEntry, out_diagnostics: *mut *mut ISlangBlob) -> SlangResult,
 });
 
-interface!(IModule, [0xc720e64, 0x8722, 0x4d31, [0x89, 0x90, 0x63, 0x8a, 0x98, 0xb1, 0xc2, 0x79]], {
-	IComponentType_vtbl: IComponentTypeVtbl,
+interface!(IModule, slang_IModule, [0xc720e64, 0x8722, 0x4d31, [0x89, 0x90, 0x63, 0x8a, 0x98, 0xb1, 0xc2, 0x79]]: IComponentType, {
 	findEntryPointByName: unsafe extern "stdcall" fn(*mut c_void, name: *const c_char, outEntryPoint: *mut *mut slang_IEntryPoint) -> SlangResult,
 	getDefinedEntryPointCount: unsafe extern "stdcall" fn(*mut c_void) -> SlangInt32,
 	getDefinedEntryPoint: unsafe extern "stdcall" fn(*mut c_void, index: SlangInt32, outEntryPoint: *mut *mut slang_IEntryPoint) -> SlangResult,
@@ -170,6 +171,6 @@ interface!(IModule, [0xc720e64, 0x8722, 0x4d31, [0x89, 0x90, 0x63, 0x8a, 0x98, 0
 	findAndCheckEntryPoint: unsafe extern "stdcall" fn(*mut c_void, name: *const c_char, stage: SlangStage, outEntryPoint: *mut *mut slang_IEntryPoint, outDiagnostics: *mut *mut ISlangBlob) -> SlangResult,
 });
 
-interface!(IEntryPoint, [0x8f241361, 0xf5bd, 0x4ca0, [0xa3, 0xac, 0x2, 0xf7, 0xfa, 0x24, 0x2, 0xb8 ]], {
+interface!(IEntryPoint, slang_IEntryPoint, [0x8f241361, 0xf5bd, 0x4ca0, [0xa3, 0xac, 0x2, 0xf7, 0xfa, 0x24, 0x2, 0xb8 ]]: IComponentType, {
 
 });
