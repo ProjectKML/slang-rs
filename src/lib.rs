@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     ffi::{c_char, c_void, CStr, CString},
     mem, ptr, slice,
 };
@@ -412,11 +413,91 @@ pub struct SharedLibrary(sys::ISharedLibrary);
 
 pub struct MutableFileSystem(sys::IMutableFileSystem);
 
-pub struct Blob(sys::IBlob);
-
 pub struct ComponentType(sys::IComponentType);
 
+pub struct EntryPoint(sys::IEntryPoint);
+
 pub struct Module(sys::IModule);
+
+impl Module {
+    #[inline]
+    pub unsafe fn find_entry_point_by_name(&mut self, name: &str) -> utils::Result<EntryPoint> {
+        let name = CString::new(name).unwrap();
+        let mut entry_point = ptr::null_mut();
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            findEntryPointByName(name.as_ptr(), &mut entry_point)
+        ))?;
+        Ok(EntryPoint(sys::IEntryPoint::from_raw(entry_point)))
+    }
+
+    #[inline]
+    pub unsafe fn get_defined_entry_point_count(&mut self) -> i32 {
+        vtable_call!(self.0, getDefinedEntryPointCount())
+    }
+
+    #[inline]
+    pub unsafe fn get_defined_entry_point(&mut self, index: i32) -> utils::Result<EntryPoint> {
+        let mut entry_point = ptr::null_mut();
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            getDefinedEntryPoint(index, &mut entry_point)
+        ))?;
+        Ok(EntryPoint(sys::IEntryPoint::from_raw(entry_point)))
+    }
+
+    #[inline]
+    pub unsafe fn serialize(&mut self) -> utils::Result<Blob> {
+        let mut blob = ptr::null_mut();
+        utils::result_from_ffi(vtable_call!(self.0, serialize(&mut blob)))?;
+        Ok(Blob(sys::IBlob::from_raw(blob)))
+    }
+
+    #[inline]
+    pub unsafe fn write_to_file(&mut self, file_name: &str) -> utils::Result<()> {
+        let file_name = CString::new(file_name).unwrap();
+        utils::result_from_ffi(vtable_call!(self.0, writeToFile(file_name.as_ptr())))
+    }
+
+    #[inline]
+    pub unsafe fn get_name(&mut self) -> Cow<'_, str> {
+        let c_str = CStr::from_ptr(vtable_call!(self.0, getName()));
+        c_str.to_string_lossy()
+    }
+
+    #[inline]
+    pub unsafe fn get_file_path(&mut self) -> Cow<'_, str> {
+        let c_str = CStr::from_ptr(vtable_call!(self.0, getFilePath()));
+        c_str.to_string_lossy()
+    }
+
+    #[inline]
+    pub unsafe fn get_unique_identity(&mut self) -> Cow<'_, str> {
+        let c_str = CStr::from_ptr(vtable_call!(self.0, getUniqueIdentity()));
+        c_str.to_string_lossy()
+    }
+
+    #[inline]
+    pub unsafe fn find_and_check_entry_point(
+        &mut self,
+        name: &str,
+        stage: Stage,
+    ) -> utils::Result<(EntryPoint, Blob)> {
+        let name = CString::new(name).unwrap();
+        let mut entry_point = ptr::null_mut();
+        let mut diagnostics = ptr::null_mut();
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            findAndCheckEntryPoint(name.as_ptr(), stage.0, &mut entry_point, &mut diagnostics)
+        ))?;
+        Ok((
+            EntryPoint(sys::IEntryPoint::from_raw(entry_point)),
+            Blob(sys::IBlob::from_raw(diagnostics)),
+        ))
+    }
+}
+
+pub struct Blob(sys::IBlob);
 
 impl Blob {
     #[inline]
@@ -979,10 +1060,10 @@ impl CompileRequest {
     }
 
     #[inline]
-    pub unsafe fn get_diagnostic_output(&mut self) -> String {
+    pub unsafe fn get_diagnostic_output(&mut self) -> Cow<'_, str> {
         let c_str = CStr::from_ptr(vtable_call!(self.0, getDiagnosticOutput()));
 
-        c_str.to_string_lossy().to_string()
+        c_str.to_string_lossy()
     }
 
     #[inline]
@@ -999,12 +1080,12 @@ impl CompileRequest {
     }
 
     #[inline]
-    pub unsafe fn get_dependency_file_path(&mut self, index: i32) -> utils::Result<String> {
+    pub unsafe fn get_dependency_file_path(&mut self, index: i32) -> utils::Result<Cow<'_, str>> {
         let c_str = vtable_call!(self.0, getDependencyFilePath(index));
         if c_str.is_null() {
             Err(1)
         } else {
-            Ok(CStr::from_ptr(c_str).to_string_lossy().to_string())
+            Ok(CStr::from_ptr(c_str).to_string_lossy())
         }
     }
 
@@ -1019,12 +1100,12 @@ impl CompileRequest {
     pub unsafe fn get_entry_point_source(
         &mut self,
         entry_point_index: i32,
-    ) -> utils::Result<String> {
+    ) -> utils::Result<Cow<'_, str>> {
         let c_str = vtable_call!(self.0, getEntryPointSource(entry_point_index));
         if c_str.is_null() {
             Err(1)
         } else {
-            Ok(CStr::from_ptr(c_str).to_string_lossy().to_string())
+            Ok(CStr::from_ptr(c_str).to_string_lossy())
         }
     }
 

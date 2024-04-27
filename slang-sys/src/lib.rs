@@ -148,5 +148,17 @@ interface!(IComponentType, [0x5bc42be8, 0x5c50, 0x4929, [0x9e, 0x5e, 0xd1, 0x5e,
 });
 
 interface!(IModule, [0xc720e64, 0x8722, 0x4d31, [0x89, 0x90, 0x63, 0x8a, 0x98, 0xb1, 0xc2, 0x79]], {
+	findEntryPointByName: unsafe extern "stdcall" fn(*mut c_void, name: *const c_char, outEntryPoint: *mut *mut slang_IEntryPoint) -> SlangResult,
+	getDefinedEntryPointCount: unsafe extern "stdcall" fn(*mut c_void) -> SlangInt32,
+	getDefinedEntryPoint: unsafe extern "stdcall" fn(*mut c_void, index: SlangInt32, outEntryPoint: *mut *mut slang_IEntryPoint) -> SlangResult,
+	serialize: unsafe extern "stdcall" fn(*mut c_void, outSerializedBlob: *mut *mut ISlangBlob) -> SlangResult,
+	writeToFile: unsafe extern "stdcall" fn(*mut c_void, fileName: *const c_char) -> SlangResult,
+	getName: unsafe extern "stdcall" fn(*mut c_void) -> *const c_char,
+	getFilePath: unsafe extern "stdcall" fn(*mut c_void) -> *const c_char,
+	getUniqueIdentity: unsafe extern "stdcall" fn(*mut c_void) -> *const c_char,
+	findAndCheckEntryPoint: unsafe extern "stdcall" fn(*mut c_void, name: *const c_char, stage: SlangStage, outEntryPoint: *mut *mut slang_IEntryPoint, outDiagnostics: *mut *mut ISlangBlob) -> SlangResult,
+});
+
+interface!(IEntryPoint, [0x8f241361, 0xf5bd, 0x4ca0, [0xa3, 0xac, 0x2, 0xf7, 0xfa, 0x24, 0x2, 0xb8 ]], {
 
 });
