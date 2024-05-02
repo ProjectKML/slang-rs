@@ -10,6 +10,7 @@ fn generate_bindings() {
         .clang_arg("-xc++")
         .clang_arg("-std=c++17")
         .allowlist_function("slang_.*")
+        .allowlist_function("sp.*")
         .allowlist_type("slang.*")
         .allowlist_var("SLANG_.*")
         .with_codegen_config(
@@ -29,8 +30,6 @@ fn generate_bindings() {
 
 fn main() {
     generate_bindings();
-
-    //TODO: do this the right way
 
     #[cfg(target_os = "windows")]
     {

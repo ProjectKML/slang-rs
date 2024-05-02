@@ -377,7 +377,7 @@ impl GlobalSession {
     }
 
     #[inline]
-    pub unsafe fn find_profile(&self, name: &str) -> ProfileID {
+    pub fn find_profile(&self, name: &str) -> ProfileID {
         let name = CString::new(name).unwrap();
         ProfileID(unsafe { vtable_call!(self.0, findProfile(name.as_ptr())) })
     }
@@ -406,6 +406,113 @@ impl Drop for GlobalSession {
 pub struct FileSystem(sys::ISlangFileSystem);
 
 pub struct Session(sys::ISession);
+
+impl Session {
+    #[inline]
+    pub fn get_global_session(&mut self) -> GlobalSession {
+        let mut global_session = unsafe { vtable_call!(self.0, getGlobalSession()) };
+        GlobalSession(unsafe { sys::IGlobalSession::from_raw(global_session) })
+    }
+
+    #[inline]
+    pub fn load_module(&mut self, module_name: &str) -> utils::Result<(Module, Blob)> {
+        let mut diagnostics = ptr::null_mut();
+
+        let module_name = CString::new(module_name).unwrap();
+
+        let module = unsafe { vtable_call!(self.0, loadModule(module_name.as_ptr(), &mut diagnostics)) };
+
+        if module.is_null() {
+            utils::Result::Err(-1)
+        } else {
+            Ok((
+                Module(unsafe { sys::IModule::from_raw(module) }),
+                Blob(unsafe { sys::IBlob::from_raw(diagnostics) }),
+            ))
+        }
+    }
+
+    #[inline]
+    pub fn load_module_from_source(
+        &mut self,
+        module_name: &str,
+        path: &str,
+        source: &Blob,
+    ) -> utils::Result<(Module, Blob)> {
+        let mut diagnostics = ptr::null_mut();
+
+        let module_name = CString::new(module_name).unwrap();
+        let path = CString::new(path).unwrap();
+
+        let module = unsafe { vtable_call!(
+            self.0,
+            loadModuleFromSource(
+                module_name.as_ptr(),
+                path.as_ptr(),
+                source.0.as_raw(),
+                &mut diagnostics
+            )
+        )};
+
+        if module.is_null() {
+            utils::Result::Err(-1)
+        } else {
+            Ok((
+                Module(unsafe { sys::IModule::from_raw(module) }),
+                Blob(unsafe { sys::IBlob::from_raw(diagnostics) }),
+            ))
+        }
+    }
+
+    #[inline]
+    pub unsafe fn create_composite_component_type(
+        &mut self,
+        component_types: &[ComponentType],
+    ) -> utils::Result<(ComponentType, Blob)> {
+        let mut composite_component_type = ptr::null_mut();
+        let mut diagnostics = ptr::null_mut();
+
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            createCompositeComponentType(
+                component_types.as_ptr().cast(),
+                component_types.len() as _,
+                &mut composite_component_type,
+                &mut diagnostics
+            )
+        ))?;
+        Ok((
+            ComponentType(sys::IComponentType::from_raw(composite_component_type)),
+            Blob(sys::IBlob::from_raw(diagnostics)),
+        ))
+    }
+
+    //TODO: specializeType
+
+    //TODO: getTypeLayout
+
+    //TODO: getContainerType
+
+    //TODO: getDynamicType
+
+    //TODO: getTypeRTTIMangledName
+
+    //TODO: getTypeConformanceWitnessMangledName
+
+    //TODO: getTypeConformanceWitnessSequentialID
+
+    #[inline]
+    pub unsafe fn create_compile_request(&mut self) -> utils::Result<CompileRequest> {
+        let mut compile_request = ptr::null_mut();
+        utils::result_from_ffi(vtable_call!(
+            self.0,
+            createCompileRequest(&mut compile_request)
+        ))?;
+        Ok(CompileRequest(sys::ICompileRequest::from_raw(
+            compile_request,
+        )))
+    }
+}
 
 pub struct Writer(sys::IWriter);
 

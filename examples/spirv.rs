@@ -28,10 +28,10 @@ fn main() {
             .process_command_line_arguments(&["-O3"])
             .unwrap();
 
-        let translation_unit =
+        let translation_unit_index =
             compile_request.add_translation_unit(SourceLanguage::SLANG, "example");
         compile_request.add_translation_unit_source_string(
-            translation_unit,
+            translation_unit_index,
             "example.slang",
             r#"
 struct MyValue {
@@ -43,23 +43,24 @@ struct MyValue {
 } constants;
 
 [shader("compute")]
-[outputtopology("triangle")]
 [numthreads(1, 1, 1)]
 void main() {
     InterlockedAdd(constants.my_ptr.value, 5);
 }"#,
         );
 
-        compile_request.compile().unwrap();
+        compile_request.compile().unwrap_or_else(|_| {
+            panic!("{}", compile_request.get_diagnostic_output());
+        });
 
-        let mut module = compile_request.get_module(translation_unit as _).unwrap();
-        let count = module.get_defined_entry_point_count();
-        println!("{}", count);
+        let mut module = compile_request
+            .get_module(translation_unit_index as _)
+            .unwrap();
+        let reflection = compile_request.get_reflection();
 
-        /*
-        let code = compile_request.get_entry_point_code(0);
-        fs::write("test.spv", code).unwrap();
-        */
-        //TODO: we need to implement blob
+        unsafe {
+            let num_entry_points = slang::sys::spReflection_getEntryPointCount(reflection);
+            println!("{num_entry_points}");
+        }
     }
 }
