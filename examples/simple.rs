@@ -1,4 +1,5 @@
 use std::mem;
+
 use slang::{CompileTarget, GlobalSession, SessionDesc, TargetDesc, TargetFlags};
 
 fn main() {
@@ -20,6 +21,4 @@ fn main() {
     };
 
     let mut session = unsafe { global_session.create_session(&session_desc) }.unwrap();
-
-    let (module, diagnostics) = session.load_module_from_source("", "", &
 }
