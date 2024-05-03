@@ -524,7 +524,7 @@ assert_size_and_align!(SpecializationArg, sys::slang_SpecializationArg);
 
 pub struct ProgramLayout(*mut sys::slang_ProgramLayout); //TODO:
 
-pub struct SharedLibrary(*mut sys::ISharedLibrary);
+pub struct SharedLibrary(sys::ISharedLibrary);
 
 impl SharedLibrary {
     #[inline]
@@ -544,10 +544,10 @@ impl ComponentType {
     }
 
     #[inline]
-    pub fn get_layout(&mut self) -> ProgramLayout {
+    pub fn get_layout(&mut self, target_index: i64) -> ProgramLayout {
         let mut diagnostics = ptr::null_mut();
 
-        let mut program_layout = unsafe { vtable_call!(self.0, getLayout(&mut diagnostics)) };
+        let mut program_layout = unsafe { vtable_call!(self.0, getLayout(target_index, &mut diagnostics)) };
 
         ProgramLayout(program_layout)
     }
@@ -695,7 +695,7 @@ impl ComponentType {
                 linkWithOptions(
                     &mut linked_component_type,
                     compiler_option_entries.len() as _,
-                    compiler_option_entries.as_ptr().cast(),
+                    compiler_option_entries.as_ptr().cast::<sys::slang_CompilerOptionEntry>() as *mut _,
                     &mut diagnostics
                 )
             )
@@ -714,7 +714,7 @@ impl Session {
     #[inline]
     pub fn get_global_session(&mut self) -> GlobalSession {
         GlobalSession(unsafe {
-            sys::IGlobalSession::from_raw(unsafe { vtable_call!(self.0, getGlobalSession()) })
+            sys::IGlobalSession::from_raw(vtable_call!(self.0, getGlobalSession()))
         })
     }
 

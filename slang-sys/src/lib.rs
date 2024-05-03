@@ -81,7 +81,7 @@ interface!(IMutableFileSystem, ISlangMutableFileSystem, [0xa058675c, 0x1d65, 0x4
 });
 
 interface!(ISharedLibrary, ISlangSharedLibrary, [0x70dbc7c4, 0xdc3b, 0x4a07, [0xae, 0x7e, 0x75, 0x2a, 0xf6, 0xa8, 0x15, 0x55]]: ICastable, {
-	findSymbolAddressByName: unsafe extern "stdcall" fn(*mut c_void, name: *mut c_char) -> *mut c_void,
+	findSymbolAddressByName: unsafe extern "stdcall" fn(*mut c_void, name: *const c_char) -> *mut c_void,
 });
 
 interface!(IComponentType, slang_IComponentType, [0x5bc42be8, 0x5c50, 0x4929, [0x9e, 0x5e, 0xd1, 0x5e, 0x7c, 0x24, 0x1, 0x5f]], {
