@@ -12,7 +12,7 @@ use std::{
 };
 
 use bitflags::bitflags;
-use slang_sys::Interface;
+use slang_sys::{IBlobVtbl, Interface};
 
 use crate::{sys::vtable_call, utils::assert_size_and_align};
 
@@ -498,6 +498,61 @@ impl Blob {
     }
 }
 
+impl From<&'static [u8]> for Blob {
+    fn from(value: &'static [u8]) -> Self {
+        unsafe extern "C" fn query_interface(
+            this: *mut sys::ISlangUnknown,
+            uuid: *const sys::SlangUUID,
+            out_object: *mut *mut c_void,
+        ) -> sys::SlangResult {
+            0
+        }
+
+        unsafe extern "C" fn add_ref(this: *mut sys::ISlangUnknown) -> u32 {
+            0
+        }
+
+        unsafe extern "C" fn release(this: *mut sys::ISlangUnknown) -> u32 {
+            0
+        }
+
+        unsafe extern "C" fn get_buffer_pointer(this: *mut c_void) -> *const c_void {
+            (*this.cast::<BlobImpl>()).value.as_ptr().cast()
+        }
+
+        unsafe extern "C" fn get_buffer_size(this: *mut c_void) -> usize {
+            (*this.cast::<BlobImpl>()).value.len()
+        }
+
+        const VTBL: IBlobVtbl = IBlobVtbl {
+            _base: sys::ISlangUnknown__bindgen_vtable {
+                ISlangUnknown_queryInterface: query_interface,
+                ISlangUnknown_addRef: add_ref,
+                ISlangUnknown_release: release,
+            },
+            getBufferPointer: get_buffer_pointer,
+            getBufferSize: get_buffer_size,
+        };
+
+        #[repr(C)]
+        struct BlobImpl {
+            vtbl: *const sys::IBlobVtbl,
+            value: &'static [u8],
+        }
+
+        let blob = Box::leak(Box::new(BlobImpl { vtbl: &VTBL, value }));
+
+        Blob(unsafe { sys::IBlob::from_raw(blob as *mut _ as *mut _) })
+    }
+}
+
+impl From<&'static str> for Blob {
+    #[inline]
+    fn from(value: &'static str) -> Self {
+        Self::from(value.as_bytes())
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct SpecializationArgKind(i32);
 
@@ -547,7 +602,8 @@ impl ComponentType {
     pub fn get_layout(&mut self, target_index: i64) -> ProgramLayout {
         let mut diagnostics = ptr::null_mut();
 
-        let mut program_layout = unsafe { vtable_call!(self.0, getLayout(target_index, &mut diagnostics)) };
+        let mut program_layout =
+            unsafe { vtable_call!(self.0, getLayout(target_index, &mut diagnostics)) };
 
         ProgramLayout(program_layout)
     }
@@ -695,7 +751,9 @@ impl ComponentType {
                 linkWithOptions(
                     &mut linked_component_type,
                     compiler_option_entries.len() as _,
-                    compiler_option_entries.as_ptr().cast::<sys::slang_CompilerOptionEntry>() as *mut _,
+                    compiler_option_entries
+                        .as_ptr()
+                        .cast::<sys::slang_CompilerOptionEntry>() as *mut _,
                     &mut diagnostics
                 )
             )
