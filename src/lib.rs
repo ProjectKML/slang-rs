@@ -9,6 +9,7 @@ use std::{
     mem,
     ops::Deref,
     ptr, slice,
+    sync::atomic::{AtomicU32, Ordering},
 };
 
 use bitflags::bitflags;
@@ -505,22 +506,38 @@ impl From<&'static [u8]> for Blob {
             uuid: *const sys::SlangUUID,
             out_object: *mut *mut c_void,
         ) -> sys::SlangResult {
+            println!("query_interface");
+            *out_object = this.cast();
             0
         }
 
         unsafe extern "C" fn add_ref(this: *mut sys::ISlangUnknown) -> u32 {
-            0
+            (*this.cast::<BlobImpl>())
+                .ref_count
+                .fetch_add(1, Ordering::SeqCst)
         }
 
         unsafe extern "C" fn release(this: *mut sys::ISlangUnknown) -> u32 {
-            0
+            let ref_count = (*this.cast::<BlobImpl>())
+                .ref_count
+                .fetch_sub(1, Ordering::SeqCst);
+            if ref_count == 1 {
+                let _ = Box::from_raw(this.cast::<BlobImpl>());
+            }
+
+            ref_count
         }
 
         unsafe extern "C" fn get_buffer_pointer(this: *mut c_void) -> *const c_void {
+            println!(
+                "get_buffer_pointer: {}",
+                (*this.cast::<BlobImpl>()).value.len()
+            );
             (*this.cast::<BlobImpl>()).value.as_ptr().cast()
         }
 
         unsafe extern "C" fn get_buffer_size(this: *mut c_void) -> usize {
+            println!("get_buffer_size");
             (*this.cast::<BlobImpl>()).value.len()
         }
 
@@ -537,10 +554,15 @@ impl From<&'static [u8]> for Blob {
         #[repr(C)]
         struct BlobImpl {
             vtbl: *const sys::IBlobVtbl,
+            ref_count: AtomicU32,
             value: &'static [u8],
         }
 
-        let blob = Box::leak(Box::new(BlobImpl { vtbl: &VTBL, value }));
+        let blob = Box::leak(Box::new(BlobImpl {
+            vtbl: &VTBL,
+            ref_count: AtomicU32::new(1),
+            value,
+        }));
 
         Blob(unsafe { sys::IBlob::from_raw(blob as *mut _ as *mut _) })
     }

@@ -31,12 +31,18 @@ fn generate_bindings() {
 fn main() {
     generate_bindings();
 
-    #[cfg(target_os = "windows")]
+    let path = cmake::Config::new("vendor/slang")
+        .define("SLANG_LIB_TYPE", "STATIC")
+        .build();
+
+    println!("cargo:rustc-link-lib=static={:?}", path.join("lib").join("slang.lib"));
+
+    /*#[cfg(target_os = "windows")]
     {
         println!("cargo:rustc-link-search=native={}", "C:/Users/beastle9end/Documents/Programs/slang");
         println!("cargo:rustc-link-lib=static=slang");
     }
 
     #[cfg(target_os = "macos")]
-    println!("cargo:rustc-link-lib=dylib=slang");
+    println!("cargo:rustc-link-lib=dylib=slang");*/
 }

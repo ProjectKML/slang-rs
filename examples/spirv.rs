@@ -39,5 +39,17 @@ void main() {
 }"#,
     );
 
-    //let module = session.load_module_from_source("example", "example.slang", &blob).unwrap();
+    unsafe {
+        println!(
+            "{}",
+            std::str::from_utf8_unchecked(std::slice::from_raw_parts(
+                blob.get_buffer_pointer().cast(),
+                blob.get_buffer_size()
+            ))
+        );
+    }
+
+    let (module, dblob) = session
+        .load_module_from_source("example", "example.slang", &blob)
+        .unwrap();
 }
