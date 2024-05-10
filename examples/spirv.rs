@@ -39,17 +39,12 @@ void main() {
 }"#,
     );
 
-    unsafe {
-        println!(
-            "{}",
-            std::str::from_utf8_unchecked(std::slice::from_raw_parts(
-                blob.get_buffer_pointer().cast(),
-                blob.get_buffer_size()
-            ))
-        );
-    }
-
-    let (module, dblob) = session
+    let (mut module, blob) = session
         .load_module_from_source("example", "example.slang", &blob)
         .unwrap();
+
+    println!(
+        "Num entry points: {}",
+        module.get_defined_entry_point_count()
+    );
 }

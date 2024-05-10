@@ -13,9 +13,11 @@ use std::{
 };
 
 use bitflags::bitflags;
-use slang_sys::{IBlobVtbl, Interface};
 
-use crate::{sys::vtable_call, utils::assert_size_and_align};
+use crate::{
+    sys::{vtable_call, Interface},
+    utils::assert_size_and_align,
+};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct CompileTarget(i32);
@@ -403,7 +405,7 @@ impl Module {
     }
 
     #[inline]
-    pub fn get_defined_entry_point_count(&mut self) -> i32 {
+    pub fn get_defined_entry_point_count(&self) -> i32 {
         unsafe { vtable_call!(self.0, getDefinedEntryPointCount()) }
     }
 
@@ -506,9 +508,22 @@ impl From<&'static [u8]> for Blob {
             uuid: *const sys::SlangUUID,
             out_object: *mut *mut c_void,
         ) -> sys::SlangResult {
-            println!("query_interface");
-            *out_object = this.cast();
-            0
+            if out_object.is_null() {
+                return utils::E_INVALIDARG;
+            }
+
+            if libc::memcmp(
+                uuid.cast(),
+                &sys::IBlob::UUID as *const _ as *const _,
+                mem::size_of::<sys::SlangUUID>(),
+            ) == 0
+            {
+                ((*(*this).vtable_).ISlangUnknown_addRef)(this);
+                *out_object = this.cast();
+                utils::S_OK
+            } else {
+                utils::E_NOINTERFACE
+            }
         }
 
         unsafe extern "C" fn add_ref(this: *mut sys::ISlangUnknown) -> u32 {
@@ -529,19 +544,14 @@ impl From<&'static [u8]> for Blob {
         }
 
         unsafe extern "C" fn get_buffer_pointer(this: *mut c_void) -> *const c_void {
-            println!(
-                "get_buffer_pointer: {}",
-                (*this.cast::<BlobImpl>()).value.len()
-            );
             (*this.cast::<BlobImpl>()).value.as_ptr().cast()
         }
 
         unsafe extern "C" fn get_buffer_size(this: *mut c_void) -> usize {
-            println!("get_buffer_size");
             (*this.cast::<BlobImpl>()).value.len()
         }
 
-        const VTBL: IBlobVtbl = IBlobVtbl {
+        const VTBL: sys::IBlobVtbl = sys::IBlobVtbl {
             _base: sys::ISlangUnknown__bindgen_vtable {
                 ISlangUnknown_queryInterface: query_interface,
                 ISlangUnknown_addRef: add_ref,

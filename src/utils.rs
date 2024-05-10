@@ -19,3 +19,7 @@ macro_rules! assert_size_and_align {
 }
 
 pub(crate) use assert_size_and_align;
+
+pub(crate) const S_OK: sys::SlangResult = 0;
+pub(crate) const E_INVALIDARG: sys::SlangResult = -2147024809;
+pub(crate) const E_NOINTERFACE: sys::SlangResult = -2147467262;
