@@ -8,6 +8,10 @@ mod interface;
 
 include!("../gen/bindings.rs");
 
+interface!(slang_ProgramLayout, [0xc140b5fd, 0x0c78, 0x452e, {0xba, 0x7c, 0x1a, 0x1e, 0x70, 0xc7, 0xf7, 0x1c}], {
+
+});
+
 interface!(slang_IGlobalSession, [0xc140b5fd, 0x0c78, 0x452e, {0xba, 0x7c, 0x1a, 0x1e, 0x70, 0xc7, 0xf7, 0x1c}], {
 	createSession: unsafe extern "C" fn(*mut slang_IGlobalSession, desc: *const slang_SessionDesc, outSession: *mut *mut slang_ISession) -> SlangResult,
 	findProfile: unsafe extern "C" fn(*mut slang_IGlobalSession, name: *const c_char) -> SlangProfileID,

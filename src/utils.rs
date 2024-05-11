@@ -1,4 +1,4 @@
-use crate::sys;
+use crate::{sys, Blob};
 
 pub type Result<T> = std::result::Result<T, sys::SlangResult>;
 
@@ -12,15 +12,49 @@ pub(crate) fn result_from_ffi(result: sys::SlangResult) -> Result<()> {
 }
 
 macro_rules! define_interface {
-    ($name: ident, $sys_ty: ty, $base_ty: ty) => {
+    ($name: ident, $sys_ty: ty) => {
         paste::paste! {
             #[repr(transparent)]
+            #[derive(Debug)]
             pub struct $name(*mut $sys_ty);
 
             impl $name {
                 #[inline]
                 pub fn as_raw(&self) -> *mut $sys_ty {
                     self.0
+                }
+            }
+
+            impl Clone for $name {
+                fn clone(&self) -> Self {
+                    unsafe {
+                        ((*self.0).unknown_vtable().ISlangUnknown_addRef)(self.0.cast());
+                    }
+                    Self(self.0.cast())
+                }
+            }
+        }
+    };
+
+    ($name: ident, $sys_ty: ty, $base_ty: ty) => {
+        paste::paste! {
+            #[repr(transparent)]
+            #[derive(Debug)]
+            pub struct $name(*mut $sys_ty);
+
+            impl $name {
+                #[inline]
+                pub fn as_raw(&self) -> *mut $sys_ty {
+                    self.0
+                }
+            }
+
+            impl Deref for $name {
+                type Target = $base_ty;
+
+                #[inline]
+                fn deref(&self) -> &Self::Target {
+                    unsafe { mem::transmute(self) }
                 }
             }
         }

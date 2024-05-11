@@ -1,4 +1,4 @@
-use std::mem;
+use std::{mem, ops::Deref};
 
 use slang::{Blob, CompileTarget, GlobalSession, SessionDesc, TargetDesc, TargetFlags};
 
@@ -39,12 +39,17 @@ void main() {
 }"#,
     );
 
-    let (mut module, blob) = session
-        .load_module_from_source("example", "example.slang", &blob)
+    let mut module = session
+        .load_module_from_source("example", "example.slang", &blob, None)
         .unwrap();
 
-    println!(
-        "Num entry points: {}",
-        module.get_defined_entry_point_count()
-    );
+    let entry_point = module.find_entry_point_by_name("main").unwrap();
+
+    let component_type = session
+        .create_composite_component_type(
+            &[module.deref().clone(), entry_point.deref().clone()],
+            None,
+        )
+        .unwrap();
+    let code = component_type.get_entry_point_code(0, 0, None).unwrap();
 }

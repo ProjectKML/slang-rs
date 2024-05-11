@@ -6,7 +6,10 @@ pub mod sys {
 
 use std::{
     ffi::{c_char, c_void, CStr, CString},
-    mem, ptr, slice,
+    mem,
+    ops::Deref,
+    ptr, slice,
+    str::Utf8Error,
     sync::atomic::{AtomicU32, Ordering},
 };
 
@@ -14,7 +17,7 @@ use bitflags::bitflags;
 
 use crate::{
     sys::{vtable_call, Interface},
-    utils::assert_size_and_align,
+    utils::{assert_size_and_align, define_interface},
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -371,11 +374,11 @@ impl Stage {
     pub const PIXEL: Self = Self(sys::SlangStage_SLANG_STAGE_PIXEL);
 }
 
-pub struct EntryPoint(*mut sys::slang_IEntryPoint);
+define_interface!(EntryPoint, sys::slang_IEntryPoint, ComponentType);
 
 impl EntryPoint {}
 
-pub struct Module(*mut sys::slang_IModule);
+define_interface!(Module, sys::slang_IModule, ComponentType);
 
 impl Module {
     #[inline]
@@ -441,22 +444,29 @@ impl Module {
         &mut self,
         name: &str,
         stage: Stage,
-    ) -> utils::Result<(EntryPoint, Blob)> {
+        diagnostics: Option<&mut Blob>,
+    ) -> utils::Result<EntryPoint> {
         let name = CString::new(name).unwrap();
         let mut entry_point = ptr::null_mut();
-        let mut diagnostics = ptr::null_mut();
+
         utils::result_from_ffi(unsafe {
             vtable_call!(
                 self.0,
-                findAndCheckEntryPoint(name.as_ptr(), stage.0, &mut entry_point, &mut diagnostics)
+                findAndCheckEntryPoint(
+                    name.as_ptr(),
+                    stage.0,
+                    &mut entry_point,
+                    diagnostics
+                        .map(|e| &mut e.0 as *mut _)
+                        .unwrap_or(ptr::null_mut())
+                )
             )
         })?;
-        Ok((EntryPoint(entry_point), Blob(diagnostics)))
+        Ok(EntryPoint(entry_point))
     }
 }
 
-#[derive(Debug)]
-pub struct Blob(*mut sys::slang_IBlob);
+define_interface!(Blob, sys::slang_IBlob);
 
 impl Blob {
     #[inline]
@@ -472,6 +482,11 @@ impl Blob {
     #[inline]
     pub fn as_slice(&self) -> &[u8] {
         unsafe { slice::from_raw_parts(self.get_buffer_pointer().cast(), self.get_buffer_size()) }
+    }
+
+    #[inline]
+    pub fn as_str(&self) -> Result<&str, Utf8Error> {
+        std::str::from_utf8(self.as_slice())
     }
 }
 
@@ -583,9 +598,9 @@ impl Default for SpecializationArg {
 
 assert_size_and_align!(SpecializationArg, sys::slang_SpecializationArg);
 
-pub struct ProgramLayout(*mut sys::slang_ProgramLayout); //TODO:
+define_interface!(ProgramLayout, sys::slang_ProgramLayout);
 
-pub struct SharedLibrary(*mut sys::ISlangSharedLibrary);
+define_interface!(SharedLibrary, sys::ISlangSharedLibrary);
 
 impl SharedLibrary {
     #[inline]
@@ -596,8 +611,7 @@ impl SharedLibrary {
     }
 }
 
-#[derive(Debug)]
-pub struct ComponentType(*mut sys::slang_IComponentType);
+define_interface!(ComponentType, sys::slang_IComponentType);
 
 impl ComponentType {
     #[inline]
@@ -625,18 +639,25 @@ impl ComponentType {
         &self,
         entry_point_index: i64,
         target_index: i64,
-    ) -> utils::Result<(Blob, Blob)> {
+        diagnostics: Option<&mut Blob>,
+    ) -> utils::Result<Blob> {
         let mut code = ptr::null_mut();
-        let mut diagnostics = ptr::null_mut();
 
         utils::result_from_ffi(unsafe {
             vtable_call!(
                 self.0,
-                getEntryPointCode(entry_point_index, target_index, &mut code, &mut diagnostics)
+                getEntryPointCode(
+                    entry_point_index,
+                    target_index,
+                    &mut code,
+                    diagnostics
+                        .map(|e| &mut e.0 as *mut _)
+                        .unwrap_or(ptr::null_mut())
+                )
             )
         })?;
 
-        Ok((Blob(code), Blob(diagnostics)))
+        Ok(Blob(code))
     }
 
     //TODO: getResultAsFileSystem
@@ -659,9 +680,9 @@ impl ComponentType {
     pub fn specialize(
         &mut self,
         specialization_args: &[SpecializationArg],
-    ) -> utils::Result<(ComponentType, Blob)> {
+        diagnostics: Option<&mut Blob>,
+    ) -> utils::Result<ComponentType> {
         let mut specialized_component_type = ptr::null_mut();
-        let mut diagnostics = ptr::null_mut();
 
         utils::result_from_ffi(unsafe {
             vtable_call!(
@@ -670,24 +691,33 @@ impl ComponentType {
                     specialization_args.as_ptr().cast(),
                     specialization_args.len() as _,
                     &mut specialized_component_type,
-                    &mut diagnostics
+                    diagnostics
+                        .map(|e| &mut e.0 as *mut _)
+                        .unwrap_or(ptr::null_mut())
                 )
             )
         })?;
 
-        Ok((ComponentType(specialized_component_type), Blob(diagnostics)))
+        Ok(ComponentType(specialized_component_type))
     }
 
     #[inline]
-    pub fn link(&mut self) -> utils::Result<(ComponentType, Blob)> {
+    pub fn link(&mut self, diagnostics: Option<&mut Blob>) -> utils::Result<ComponentType> {
         let mut linked_component_type = ptr::null_mut();
-        let mut diagnostics = ptr::null_mut();
 
         utils::result_from_ffi(unsafe {
-            vtable_call!(self.0, link(&mut linked_component_type, &mut diagnostics))
+            vtable_call!(
+                self.0,
+                link(
+                    &mut linked_component_type,
+                    diagnostics
+                        .map(|e| &mut e.0 as *mut _)
+                        .unwrap_or(ptr::null_mut())
+                )
+            )
         })?;
 
-        Ok((ComponentType(linked_component_type), Blob(diagnostics)))
+        Ok(ComponentType(linked_component_type))
     }
 
     #[inline]
@@ -695,9 +725,9 @@ impl ComponentType {
         &mut self,
         entry_point_index: i64,
         target_index: i64,
-    ) -> utils::Result<(SharedLibrary, Blob)> {
+        diagnostics: Option<&mut Blob>,
+    ) -> utils::Result<SharedLibrary> {
         let mut shared_library = ptr::null_mut();
-        let mut diagnostics = ptr::null_mut();
 
         utils::result_from_ffi(unsafe {
             vtable_call!(
@@ -706,12 +736,14 @@ impl ComponentType {
                     entry_point_index,
                     target_index,
                     &mut shared_library,
-                    &mut diagnostics
+                    diagnostics
+                        .map(|e| &mut e.0 as *mut _)
+                        .unwrap_or(ptr::null_mut())
                 )
             )
         })?;
 
-        Ok((SharedLibrary(shared_library), Blob(diagnostics)))
+        Ok(SharedLibrary(shared_library))
     }
 
     #[inline]
@@ -734,9 +766,9 @@ impl ComponentType {
     pub fn link_with_options(
         &mut self,
         compiler_option_entries: &[CompilerOptionEntry],
-    ) -> utils::Result<(ComponentType, Blob)> {
+        diagnostics: Option<&mut Blob>,
+    ) -> utils::Result<ComponentType> {
         let mut linked_component_type = ptr::null_mut();
-        let mut diagnostics = ptr::null_mut();
 
         utils::result_from_ffi(unsafe {
             vtable_call!(
@@ -747,17 +779,18 @@ impl ComponentType {
                     compiler_option_entries
                         .as_ptr()
                         .cast::<sys::slang_CompilerOptionEntry>() as *mut _,
-                    &mut diagnostics
+                    diagnostics
+                        .map(|e| &mut e.0 as *mut _)
+                        .unwrap_or(ptr::null_mut())
                 )
             )
         })?;
 
-        Ok((ComponentType(linked_component_type), Blob(diagnostics)))
+        Ok(ComponentType(linked_component_type))
     }
 }
 
-#[derive(Debug)]
-pub struct Session(*mut sys::slang_ISession);
+define_interface!(Session, sys::slang_ISession);
 
 impl Session {
     #[inline]
@@ -766,18 +799,29 @@ impl Session {
     }
 
     #[inline]
-    pub fn load_module(&mut self, module_name: &str) -> utils::Result<(Module, Blob)> {
-        let mut diagnostics = ptr::null_mut();
-
+    pub fn load_module(
+        &mut self,
+        module_name: &str,
+        diagnostics: Option<&mut Blob>,
+    ) -> utils::Result<Module> {
         let module_name = CString::new(module_name).unwrap();
 
-        let module =
-            unsafe { vtable_call!(self.0, loadModule(module_name.as_ptr(), &mut diagnostics)) };
+        let module = unsafe {
+            vtable_call!(
+                self.0,
+                loadModule(
+                    module_name.as_ptr(),
+                    diagnostics
+                        .map(|e| &mut e.0 as *mut _)
+                        .unwrap_or(ptr::null_mut())
+                )
+            )
+        };
 
         if module.is_null() {
-            utils::Result::Err(-1)
+            utils::Result::Err(0)
         } else {
-            Ok((Module(module), Blob(diagnostics)))
+            Ok(Module(module))
         }
     }
 
@@ -787,9 +831,8 @@ impl Session {
         module_name: &str,
         path: &str,
         source: &Blob,
-    ) -> utils::Result<(Module, Blob)> {
-        let mut diagnostics = ptr::null_mut();
-
+        diagnostics: Option<&mut Blob>,
+    ) -> utils::Result<Module> {
         let module_name = CString::new(module_name).unwrap();
         let path = CString::new(path).unwrap();
 
@@ -800,15 +843,17 @@ impl Session {
                     module_name.as_ptr(),
                     path.as_ptr(),
                     source.0,
-                    &mut diagnostics
+                    diagnostics
+                        .map(|e| &mut e.0 as *mut _)
+                        .unwrap_or(ptr::null_mut())
                 )
             )
         };
 
         if module.is_null() {
-            utils::Result::Err(-1)
+            utils::Result::Err(0)
         } else {
-            Ok((Module(module), Blob(diagnostics)))
+            Ok(Module(module))
         }
     }
 
@@ -816,9 +861,9 @@ impl Session {
     pub fn create_composite_component_type(
         &mut self,
         component_types: &[ComponentType],
-    ) -> utils::Result<(ComponentType, Blob)> {
+        diagnostics: Option<&mut Blob>,
+    ) -> utils::Result<ComponentType> {
         let mut composite_component_type = ptr::null_mut();
-        let mut diagnostics = ptr::null_mut();
 
         utils::result_from_ffi(unsafe {
             vtable_call!(
@@ -827,11 +872,13 @@ impl Session {
                     component_types.as_ptr().cast(),
                     component_types.len() as _,
                     &mut composite_component_type,
-                    &mut diagnostics
+                    diagnostics
+                        .map(|e| &mut e.0 as *mut _)
+                        .unwrap_or(ptr::null_mut())
                 )
             )
         })?;
-        Ok((ComponentType(composite_component_type), Blob(diagnostics)))
+        Ok(ComponentType(composite_component_type))
     }
 
     //TODO: specializeType
@@ -849,8 +896,7 @@ impl Session {
     //TODO: getTypeConformanceWitnessSequentialID
 }
 
-#[derive(Debug)]
-pub struct GlobalSession(*mut sys::slang_IGlobalSession);
+define_interface!(GlobalSession, sys::slang_IGlobalSession);
 
 impl GlobalSession {
     #[inline]

@@ -1,6 +1,6 @@
 use std::ffi::c_void;
 use std::mem;
-use crate::{SlangResult, SlangUUID};
+use crate::{ISlangUnknown__bindgen_vtable, SlangResult, SlangUUID};
 
 pub unsafe trait Interface : Sized {
     const UUID: SlangUUID;
@@ -8,9 +8,15 @@ pub unsafe trait Interface : Sized {
     type VTable;
 
     #[inline]
-    unsafe fn vtable(&mut self) -> &'static Self::VTable {
-        &**(self as *mut Self as *mut *mut Self::VTable)
+    unsafe fn vtable(&mut self) -> &Self::VTable {
+        &**(self as *mut Self as *mut *mut _)
     }
+
+    #[inline]
+    unsafe fn unknown_vtable(&mut self) -> &ISlangUnknown__bindgen_vtable {
+        &**(self as *mut Self as *mut *mut _)
+    }
+
 }
 
 pub use paste::paste;
