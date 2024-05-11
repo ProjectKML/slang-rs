@@ -11,6 +11,24 @@ pub(crate) fn result_from_ffi(result: sys::SlangResult) -> Result<()> {
     }
 }
 
+macro_rules! define_interface {
+    ($name: ident, $sys_ty: ty, $base_ty: ty) => {
+        paste::paste! {
+            #[repr(transparent)]
+            pub struct $name(*mut $sys_ty);
+
+            impl $name {
+                #[inline]
+                pub fn as_raw(&self) -> *mut $sys_ty {
+                    self.0
+                }
+            }
+        }
+    };
+}
+
+pub(crate) use define_interface;
+
 macro_rules! assert_size_and_align {
     ($type_: ty, $ffi_type: ty) => {
         ::static_assertions::assert_eq_size!($type_, $ffi_type);

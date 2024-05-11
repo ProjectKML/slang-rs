@@ -373,12 +373,12 @@ impl Stage {
     pub const PIXEL: Self = Self(sys::SlangStage_SLANG_STAGE_PIXEL);
 }
 
-pub struct EntryPoint(sys::IEntryPoint);
+pub struct EntryPoint(*mut sys::slang_IEntryPoint);
 
 impl EntryPoint {}
 
 impl Deref for EntryPoint {
-    type Target = CompileTarget;
+    type Target = ComponentType;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -386,7 +386,7 @@ impl Deref for EntryPoint {
     }
 }
 
-pub struct Module(sys::IModule);
+pub struct Module(*mut sys::slang_IModule);
 
 impl Module {
     #[inline]
@@ -399,9 +399,7 @@ impl Module {
                 findEntryPointByName(name.as_ptr(), &mut entry_point)
             )
         })?;
-        Ok(EntryPoint(unsafe {
-            sys::IEntryPoint::from_raw(entry_point)
-        }))
+        Ok(EntryPoint(entry_point))
     }
 
     #[inline]
@@ -415,16 +413,14 @@ impl Module {
         utils::result_from_ffi(unsafe {
             vtable_call!(self.0, getDefinedEntryPoint(index, &mut entry_point))
         })?;
-        Ok(EntryPoint(unsafe {
-            sys::IEntryPoint::from_raw(entry_point)
-        }))
+        Ok(EntryPoint(entry_point))
     }
 
     #[inline]
     pub fn serialize(&mut self) -> utils::Result<Blob> {
         let mut blob = ptr::null_mut();
         utils::result_from_ffi(unsafe { vtable_call!(self.0, serialize(&mut blob)) })?;
-        Ok(Blob(unsafe { sys::IBlob::from_raw(blob) }))
+        Ok(Blob(blob))
     }
 
     #[inline]
@@ -466,10 +462,7 @@ impl Module {
                 findAndCheckEntryPoint(name.as_ptr(), stage.0, &mut entry_point, &mut diagnostics)
             )
         })?;
-        Ok((
-            EntryPoint(unsafe { sys::IEntryPoint::from_raw(entry_point) }),
-            Blob(unsafe { sys::IBlob::from_raw(diagnostics) }),
-        ))
+        Ok((EntryPoint(entry_point), Blob(diagnostics)))
     }
 }
 
@@ -482,7 +475,7 @@ impl Deref for Module {
     }
 }
 
-pub struct Blob(sys::IBlob);
+pub struct Blob(*mut sys::slang_IBlob);
 
 impl Blob {
     #[inline]
@@ -512,9 +505,11 @@ impl From<&'static [u8]> for Blob {
                 return utils::E_INVALIDARG;
             }
 
+            println!("query_interface");
+
             if libc::memcmp(
                 uuid.cast(),
-                &sys::IBlob::UUID as *const _ as *const _,
+                &sys::slang_IBlob::UUID as *const _ as *const _,
                 mem::size_of::<sys::SlangUUID>(),
             ) == 0
             {
@@ -527,9 +522,11 @@ impl From<&'static [u8]> for Blob {
         }
 
         unsafe extern "C" fn add_ref(this: *mut sys::ISlangUnknown) -> u32 {
-            (*this.cast::<BlobImpl>())
+            let v = (*this.cast::<BlobImpl>())
                 .ref_count
-                .fetch_add(1, Ordering::SeqCst)
+                .fetch_add(1, Ordering::SeqCst);
+            println!("add_ref: {v}");
+            v
         }
 
         unsafe extern "C" fn release(this: *mut sys::ISlangUnknown) -> u32 {
@@ -543,15 +540,15 @@ impl From<&'static [u8]> for Blob {
             ref_count
         }
 
-        unsafe extern "C" fn get_buffer_pointer(this: *mut c_void) -> *const c_void {
+        unsafe extern "C" fn get_buffer_pointer(this: *mut sys::slang_IBlob) -> *const c_void {
             (*this.cast::<BlobImpl>()).value.as_ptr().cast()
         }
 
-        unsafe extern "C" fn get_buffer_size(this: *mut c_void) -> usize {
+        unsafe extern "C" fn get_buffer_size(this: *mut sys::slang_IBlob) -> usize {
             (*this.cast::<BlobImpl>()).value.len()
         }
 
-        const VTBL: sys::IBlobVtbl = sys::IBlobVtbl {
+        const VTBL: sys::slang_IBlobVtbl = sys::slang_IBlobVtbl {
             _base: sys::ISlangUnknown__bindgen_vtable {
                 ISlangUnknown_queryInterface: query_interface,
                 ISlangUnknown_addRef: add_ref,
@@ -563,7 +560,7 @@ impl From<&'static [u8]> for Blob {
 
         #[repr(C)]
         struct BlobImpl {
-            vtbl: *const sys::IBlobVtbl,
+            vtbl: *const sys::slang_IBlobVtbl,
             ref_count: AtomicU32,
             value: &'static [u8],
         }
@@ -574,7 +571,7 @@ impl From<&'static [u8]> for Blob {
             value,
         }));
 
-        Blob(unsafe { sys::IBlob::from_raw(blob as *mut _ as *mut _) })
+        Blob(blob as *mut _ as *mut _)
     }
 }
 
@@ -611,7 +608,7 @@ assert_size_and_align!(SpecializationArg, sys::slang_SpecializationArg);
 
 pub struct ProgramLayout(*mut sys::slang_ProgramLayout); //TODO:
 
-pub struct SharedLibrary(sys::ISharedLibrary);
+pub struct SharedLibrary(*mut sys::ISlangSharedLibrary);
 
 impl SharedLibrary {
     #[inline]
@@ -622,22 +619,22 @@ impl SharedLibrary {
     }
 }
 
-pub struct ComponentType(sys::IComponentType);
+pub struct ComponentType(*mut sys::slang_IComponentType);
 
 impl ComponentType {
     #[inline]
     pub fn get_session(&mut self) -> Session {
-        Session(unsafe { sys::ISession::from_raw(vtable_call!(self.0, getSession())) })
+        Session(unsafe { vtable_call!(self.0, getSession()) })
     }
 
     #[inline]
-    pub fn get_layout(&mut self, target_index: i64) -> ProgramLayout {
+    pub fn get_layout(&mut self, target_index: i64) -> (ProgramLayout, Blob) {
         let mut diagnostics = ptr::null_mut();
 
         let mut program_layout =
             unsafe { vtable_call!(self.0, getLayout(target_index, &mut diagnostics)) };
 
-        ProgramLayout(program_layout)
+        (ProgramLayout(program_layout), Blob(diagnostics))
     }
 
     #[inline]
@@ -661,10 +658,7 @@ impl ComponentType {
             )
         })?;
 
-        Ok((
-            Blob(unsafe { sys::IBlob::from_raw(code) }),
-            Blob(unsafe { sys::IBlob::from_raw(diagnostics) }),
-        ))
+        Ok((Blob(code), Blob(diagnostics)))
     }
 
     //TODO: getResultAsFileSystem
@@ -680,7 +674,7 @@ impl ComponentType {
             )
         }
 
-        Blob(unsafe { sys::IBlob::from_raw(hash) })
+        Blob(hash)
     }
 
     #[inline]
@@ -703,10 +697,7 @@ impl ComponentType {
             )
         })?;
 
-        Ok((
-            ComponentType(unsafe { sys::IComponentType::from_raw(specialized_component_type) }),
-            Blob(unsafe { sys::IBlob::from_raw(diagnostics) }),
-        ))
+        Ok((ComponentType(specialized_component_type), Blob(diagnostics)))
     }
 
     #[inline]
@@ -718,10 +709,7 @@ impl ComponentType {
             vtable_call!(self.0, link(&mut linked_component_type, &mut diagnostics))
         })?;
 
-        Ok((
-            ComponentType(unsafe { sys::IComponentType::from_raw(linked_component_type) }),
-            Blob(unsafe { sys::IBlob::from_raw(diagnostics) }),
-        ))
+        Ok((ComponentType(linked_component_type), Blob(diagnostics)))
     }
 
     #[inline]
@@ -745,10 +733,7 @@ impl ComponentType {
             )
         })?;
 
-        Ok((
-            SharedLibrary(unsafe { sys::ISharedLibrary::from_raw(shared_library) }),
-            Blob(unsafe { sys::IBlob::from_raw(diagnostics) }),
-        ))
+        Ok((SharedLibrary(shared_library), Blob(diagnostics)))
     }
 
     #[inline]
@@ -764,9 +749,7 @@ impl ComponentType {
             )
         })?;
 
-        Ok(ComponentType(unsafe {
-            sys::IComponentType::from_raw(entry_point)
-        }))
+        Ok(ComponentType(entry_point))
     }
 
     #[inline]
@@ -791,21 +774,16 @@ impl ComponentType {
             )
         })?;
 
-        Ok((
-            ComponentType(unsafe { sys::IComponentType::from_raw(linked_component_type) }),
-            Blob(unsafe { sys::IBlob::from_raw(diagnostics) }),
-        ))
+        Ok((ComponentType(linked_component_type), Blob(diagnostics)))
     }
 }
 
-pub struct Session(sys::ISession);
+pub struct Session(*mut sys::slang_ISession);
 
 impl Session {
     #[inline]
     pub fn get_global_session(&mut self) -> GlobalSession {
-        GlobalSession(unsafe {
-            sys::IGlobalSession::from_raw(vtable_call!(self.0, getGlobalSession()))
-        })
+        GlobalSession(unsafe { vtable_call!(self.0, getGlobalSession()) })
     }
 
     #[inline]
@@ -820,10 +798,7 @@ impl Session {
         if module.is_null() {
             utils::Result::Err(-1)
         } else {
-            Ok((
-                Module(unsafe { sys::IModule::from_raw(module) }),
-                Blob(unsafe { sys::IBlob::from_raw(diagnostics) }),
-            ))
+            Ok((Module(module), Blob(diagnostics)))
         }
     }
 
@@ -845,7 +820,7 @@ impl Session {
                 loadModuleFromSource(
                     module_name.as_ptr(),
                     path.as_ptr(),
-                    source.0.as_raw(),
+                    source.0,
                     &mut diagnostics
                 )
             )
@@ -854,34 +829,30 @@ impl Session {
         if module.is_null() {
             utils::Result::Err(-1)
         } else {
-            Ok((
-                Module(unsafe { sys::IModule::from_raw(module) }),
-                Blob(unsafe { sys::IBlob::from_raw(diagnostics) }),
-            ))
+            Ok((Module(module), Blob(diagnostics)))
         }
     }
 
     #[inline]
-    pub unsafe fn create_composite_component_type(
+    pub fn create_composite_component_type(
         &mut self,
         component_types: &[ComponentType],
     ) -> utils::Result<(ComponentType, Blob)> {
         let mut composite_component_type = ptr::null_mut();
         let mut diagnostics = ptr::null_mut();
 
-        utils::result_from_ffi(vtable_call!(
-            self.0,
-            createCompositeComponentType(
-                component_types.as_ptr().cast(),
-                component_types.len() as _,
-                &mut composite_component_type,
-                &mut diagnostics
+        utils::result_from_ffi(unsafe {
+            vtable_call!(
+                self.0,
+                createCompositeComponentType(
+                    component_types.as_ptr().cast(),
+                    component_types.len() as _,
+                    &mut composite_component_type,
+                    &mut diagnostics
+                )
             )
-        ))?;
-        Ok((
-            ComponentType(sys::IComponentType::from_raw(composite_component_type)),
-            Blob(sys::IBlob::from_raw(diagnostics)),
-        ))
+        })?;
+        Ok((ComponentType(composite_component_type), Blob(diagnostics)))
     }
 
     //TODO: specializeType
@@ -899,7 +870,7 @@ impl Session {
     //TODO: getTypeConformanceWitnessSequentialID
 }
 
-pub struct GlobalSession(sys::IGlobalSession);
+pub struct GlobalSession(*mut sys::slang_IGlobalSession);
 
 impl GlobalSession {
     #[inline]
@@ -909,7 +880,7 @@ impl GlobalSession {
             sys::slang_createGlobalSession(sys::SLANG_API_VERSION as _, &mut session)
         })?;
 
-        Ok(Self(unsafe { sys::IGlobalSession::from_raw(session) }))
+        Ok(Self(session))
     }
 
     #[inline]
@@ -919,7 +890,7 @@ impl GlobalSession {
             sys::slang_createGlobalSessionWithoutStdLib(sys::SLANG_API_VERSION as _, &mut session)
         })?;
 
-        Ok(Self(unsafe { sys::IGlobalSession::from_raw(session) }))
+        Ok(Self(session))
     }
 
     #[inline]
@@ -929,7 +900,7 @@ impl GlobalSession {
             self.0,
             createSession(desc as *const SessionDesc as *const _, &mut session)
         ))?;
-        Ok(Session(sys::ISession::from_raw(session)))
+        Ok(Session(session))
     }
 
     #[inline]
