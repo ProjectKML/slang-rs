@@ -57,7 +57,7 @@ interface!(slang_ISession, [0x67618701, 0xd116, 0x468f, {0xab, 0x3b, 0x47, 0x4b,
 	loadModuleFromSourceString: unsafe extern "C" fn(*mut slang_ISession, moduleName: *const c_char, path: *const c_char, string: *const c_char, outDiagnostics: *mut *mut slang_IBlob) -> *mut slang_IModule,
 });
 
-interface!(slang_IBlob, [0x87ede0e1, 0x4852, 0x44b0, {0x8b, 0xf2, 0xcb, 0x31, 0x87, 0x4d, 0xe2, 0x39}], {
+interface!(slang_IBlob, [0x8BA5FB08, 0x5195, 0x40e2, {0xAC, 0x58, 0x0D, 0x98, 0x9C, 0x3A, 0x01, 0x02}], {
 	getBufferPointer: unsafe extern "C" fn(*mut slang_IBlob) -> *const c_void,
 	getBufferSize: unsafe extern "C" fn(*mut slang_IBlob) -> usize,
 });

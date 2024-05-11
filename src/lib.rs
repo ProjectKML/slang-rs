@@ -6,9 +6,7 @@ pub mod sys {
 
 use std::{
     ffi::{c_char, c_void, CStr, CString},
-    mem,
-    ops::Deref,
-    ptr, slice,
+    mem, ptr, slice,
     sync::atomic::{AtomicU32, Ordering},
 };
 
@@ -377,15 +375,6 @@ pub struct EntryPoint(*mut sys::slang_IEntryPoint);
 
 impl EntryPoint {}
 
-impl Deref for EntryPoint {
-    type Target = ComponentType;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        unsafe { mem::transmute(self) }
-    }
-}
-
 pub struct Module(*mut sys::slang_IModule);
 
 impl Module {
@@ -466,15 +455,7 @@ impl Module {
     }
 }
 
-impl Deref for Module {
-    type Target = ComponentType;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        unsafe { mem::transmute(self) }
-    }
-}
-
+#[derive(Debug)]
 pub struct Blob(*mut sys::slang_IBlob);
 
 impl Blob {
@@ -505,8 +486,6 @@ impl From<&'static [u8]> for Blob {
                 return utils::E_INVALIDARG;
             }
 
-            println!("query_interface");
-
             if libc::memcmp(
                 uuid.cast(),
                 &sys::slang_IBlob::UUID as *const _ as *const _,
@@ -522,11 +501,9 @@ impl From<&'static [u8]> for Blob {
         }
 
         unsafe extern "C" fn add_ref(this: *mut sys::ISlangUnknown) -> u32 {
-            let v = (*this.cast::<BlobImpl>())
+            (*this.cast::<BlobImpl>())
                 .ref_count
-                .fetch_add(1, Ordering::SeqCst);
-            println!("add_ref: {v}");
-            v
+                .fetch_add(1, Ordering::SeqCst)
         }
 
         unsafe extern "C" fn release(this: *mut sys::ISlangUnknown) -> u32 {
@@ -619,6 +596,7 @@ impl SharedLibrary {
     }
 }
 
+#[derive(Debug)]
 pub struct ComponentType(*mut sys::slang_IComponentType);
 
 impl ComponentType {
@@ -778,6 +756,7 @@ impl ComponentType {
     }
 }
 
+#[derive(Debug)]
 pub struct Session(*mut sys::slang_ISession);
 
 impl Session {
@@ -870,6 +849,7 @@ impl Session {
     //TODO: getTypeConformanceWitnessSequentialID
 }
 
+#[derive(Debug)]
 pub struct GlobalSession(*mut sys::slang_IGlobalSession);
 
 impl GlobalSession {
