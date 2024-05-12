@@ -1,27 +1,21 @@
-use std::{mem, ops::Deref};
+use std::{mem, ops::Deref, slice};
 
-use slang::{Blob, CompileTarget, GlobalSession, SessionDesc, TargetDesc, TargetFlags};
+use slang::{
+    Blob, CompileTarget, GlobalSession, SessionDescBuilder, TargetDescBuilder, TargetFlags,
+};
 
 fn main() {
     let global_session = GlobalSession::new().unwrap();
 
-    let target_desc = TargetDesc {
-        structure_size: mem::size_of::<TargetDesc>(),
-        format: CompileTarget::SPIRV,
-        profile: global_session.find_profile("spirv_1_4"),
-        flags: TargetFlags::GENERATE_SPIRV_DIRECTLY,
-        force_glsl_scalar_buffer_layout: true,
-        ..Default::default()
-    };
+    let target_desc = TargetDescBuilder::default()
+        .format(CompileTarget::SPIRV)
+        .profile(global_session.find_profile("spirv_1_4"))
+        .flags(TargetFlags::GENERATE_SPIRV_DIRECTLY)
+        .force_glsl_scalar_buffer_layout(true);
 
-    let session_desc = SessionDesc {
-        structure_size: mem::size_of::<SessionDesc>(),
-        targets: &target_desc,
-        target_count: 1,
-        ..Default::default()
-    };
+    let session_desc = SessionDescBuilder::default().targets(slice::from_ref(&target_desc));
 
-    let mut session = unsafe { global_session.create_session(&session_desc) }.unwrap();
+    let mut session = global_session.create_session(&session_desc).unwrap();
 
     let blob = Blob::from(
         r#"

@@ -6,6 +6,7 @@ pub mod sys {
 
 use std::{
     ffi::{c_char, c_void, CStr, CString},
+    marker::PhantomData,
     mem,
     ops::Deref,
     ptr, slice,
@@ -289,6 +290,73 @@ impl Default for TargetDesc {
     }
 }
 
+#[repr(transparent)]
+pub struct TargetDescBuilder<'a>(TargetDesc, PhantomData<&'a ()>);
+
+impl TargetDescBuilder<'_> {
+    #[inline]
+    pub fn format(mut self, format: CompileTarget) -> Self {
+        self.0.format = format;
+        self
+    }
+
+    #[inline]
+    pub fn profile(mut self, profile: ProfileID) -> Self {
+        self.0.profile = profile;
+        self
+    }
+
+    #[inline]
+    pub fn flags(mut self, flags: TargetFlags) -> Self {
+        self.0.flags = flags;
+        self
+    }
+
+    #[inline]
+    pub fn floating_point_mode(mut self, floating_point_mode: FloatingPointMode) -> Self {
+        self.0.floating_point_mode = floating_point_mode;
+        self
+    }
+
+    #[inline]
+    pub fn line_directive_mode(mut self, line_directive_mode: LineDirectiveMode) -> Self {
+        self.0.line_directive_mode = line_directive_mode;
+        self
+    }
+
+    #[inline]
+    pub fn force_glsl_scalar_buffer_layout(
+        mut self,
+        force_glsl_scalar_buffer_layout: bool,
+    ) -> Self {
+        self.0.force_glsl_scalar_buffer_layout = force_glsl_scalar_buffer_layout;
+        self
+    }
+
+    #[inline]
+    pub fn compiler_option_entries(
+        mut self,
+        compiler_option_entries: &mut [CompilerOptionEntry],
+    ) -> Self {
+        self.0.compiler_option_entries = compiler_option_entries.as_mut_ptr();
+        self.0.compiler_option_entry_count = compiler_option_entries.len() as _;
+        self
+    }
+}
+
+impl Default for TargetDescBuilder<'_> {
+    #[inline]
+    fn default() -> Self {
+        Self(
+            TargetDesc {
+                structure_size: mem::size_of::<TargetDesc>(),
+                ..Default::default()
+            },
+            PhantomData,
+        )
+    }
+}
+
 assert_size_and_align!(TargetDesc, sys::slang_TargetDesc);
 
 bitflags! {
@@ -347,6 +415,58 @@ impl Default for SessionDesc {
     #[inline]
     fn default() -> Self {
         unsafe { mem::zeroed() }
+    }
+}
+
+#[repr(transparent)]
+pub struct SessionDescBuilder<'a>(SessionDesc, PhantomData<&'a ()>);
+
+impl SessionDescBuilder<'_> {
+    #[inline]
+    pub fn targets(mut self, targets: &[TargetDescBuilder]) -> Self {
+        self.0.targets = targets.as_ptr().cast();
+        self.0.target_count = targets.len() as _;
+        self
+    }
+
+    #[inline]
+    pub fn flags(mut self, flags: SessionFlags) -> Self {
+        self.0.flags = flags;
+        self
+    }
+
+    #[inline]
+    pub fn default_matrix_layout_mode(
+        mut self,
+        default_matrix_layout_mode: MatrixLayoutMode,
+    ) -> Self {
+        self.0.default_matrix_layout_mode = default_matrix_layout_mode;
+        self
+    }
+
+    #[inline]
+    pub fn enable_effect_annotations(mut self, enable_effect_annotations: bool) -> Self {
+        self.0.enable_effect_annotations = enable_effect_annotations;
+        self
+    }
+
+    #[inline]
+    pub fn allow_glsl_syntax(mut self, allow_glsl_syntax: bool) -> Self {
+        self.0.allow_glsl_syntax = allow_glsl_syntax;
+        self
+    }
+}
+
+impl Default for SessionDescBuilder<'_> {
+    #[inline]
+    fn default() -> Self {
+        Self(
+            SessionDesc {
+                structure_size: mem::size_of::<SessionDesc>(),
+                ..Default::default()
+            },
+            PhantomData,
+        )
     }
 }
 
@@ -920,12 +1040,14 @@ impl GlobalSession {
     }
 
     #[inline]
-    pub unsafe fn create_session(&self, desc: &SessionDesc) -> utils::Result<Session> {
+    pub fn create_session(&self, desc: &SessionDescBuilder) -> utils::Result<Session> {
         let mut session = ptr::null_mut();
-        utils::result_from_ffi(vtable_call!(
-            self.0,
-            createSession(desc as *const SessionDesc as *const _, &mut session)
-        ))?;
+        utils::result_from_ffi(unsafe {
+            vtable_call!(
+                self.0,
+                createSession(&desc.0 as *const SessionDesc as *const _, &mut session)
+            )
+        })?;
         Ok(Session(session))
     }
 
