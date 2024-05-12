@@ -623,7 +623,7 @@ impl ComponentType {
     pub fn get_layout(&mut self, target_index: i64) -> (ProgramLayout, Blob) {
         let mut diagnostics = ptr::null_mut();
 
-        let mut program_layout =
+        let program_layout =
             unsafe { vtable_call!(self.0, getLayout(target_index, &mut diagnostics)) };
 
         (ProgramLayout(program_layout), Blob(diagnostics))
@@ -750,7 +750,7 @@ impl ComponentType {
     pub fn rename_entry_point(&mut self, new_name: &str) -> utils::Result<ComponentType> {
         let mut entry_point = ptr::null_mut();
 
-        let mut new_name = CString::new(new_name).unwrap();
+        let new_name = CString::new(new_name).unwrap();
 
         utils::result_from_ffi(unsafe {
             vtable_call!(

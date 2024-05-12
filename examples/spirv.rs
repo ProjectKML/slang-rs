@@ -15,6 +15,7 @@ fn main() {
     };
 
     let session_desc = SessionDesc {
+        structure_size: mem::size_of::<SessionDesc>(),
         targets: &target_desc,
         target_count: 1,
         ..Default::default()
@@ -22,7 +23,7 @@ fn main() {
 
     let mut session = unsafe { global_session.create_session(&session_desc) }.unwrap();
 
-    let mut blob = Blob::from(
+    let blob = Blob::from(
         r#"
 struct MyValue {
     uint value;
@@ -45,11 +46,12 @@ void main() {
 
     let entry_point = module.find_entry_point_by_name("main").unwrap();
 
-    let component_type = session
+    let mut program = session
         .create_composite_component_type(
             &[module.deref().clone(), entry_point.deref().clone()],
             None,
         )
         .unwrap();
-    let code = component_type.get_entry_point_code(0, 0, None).unwrap();
+    let mut linked_program = program.link(None).unwrap();
+    let code = linked_program.get_entry_point_code(0, 0, None).unwrap();
 }

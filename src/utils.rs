@@ -1,4 +1,4 @@
-use crate::{sys, Blob};
+use crate::sys;
 
 pub type Result<T> = std::result::Result<T, sys::SlangResult>;
 
@@ -34,6 +34,8 @@ macro_rules! define_interface {
                 }
             }
         }
+
+        //TODO: ref types
     };
 
     ($name: ident, $sys_ty: ty, $base_ty: ty) => {
