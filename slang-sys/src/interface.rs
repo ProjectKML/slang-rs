@@ -1,6 +1,5 @@
-use std::ffi::c_void;
 use std::mem;
-use crate::{ISlangUnknown__bindgen_vtable, SlangResult, SlangUUID};
+use crate::{ISlangUnknown__bindgen_vtable, SlangUUID};
 
 pub unsafe trait Interface : Sized {
     const UUID: SlangUUID;

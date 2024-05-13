@@ -20,6 +20,8 @@ use crate::{
     sys::{vtable_call, Interface},
     utils::{assert_size_and_align, define_interface},
 };
+use crate::utils::Error;
+use crate::utils::Result;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct CompileTarget(i32);
@@ -740,13 +742,17 @@ impl ComponentType {
     }
 
     #[inline]
-    pub fn get_layout(&mut self, target_index: i64) -> (ProgramLayout, Blob) {
+    pub fn get_layout(&mut self, target_index: i64) -> Result<ProgramLayout> {
         let mut diagnostics = ptr::null_mut();
 
         let program_layout =
             unsafe { vtable_call!(self.0, getLayout(target_index, &mut diagnostics)) };
 
-        (ProgramLayout(program_layout), Blob(diagnostics))
+        if program_layout.is_null() {
+            Err(Error::Blob(Blob(diagnostics)))
+        } else {
+            Ok(ProgramLayout(program_layout))
+        }
     }
 
     #[inline]
@@ -759,23 +765,22 @@ impl ComponentType {
         &self,
         entry_point_index: i64,
         target_index: i64,
-        diagnostics: Option<&mut Blob>,
     ) -> utils::Result<Blob> {
         let mut code = ptr::null_mut();
+        let mut diagnostics = ptr::null_mut();
 
-        utils::result_from_ffi(unsafe {
+        utils::result_from_blob(unsafe {
             vtable_call!(
                 self.0,
                 getEntryPointCode(
                     entry_point_index,
                     target_index,
                     &mut code,
-                    diagnostics
-                        .map(|e| &mut e.0 as *mut _)
-                        .unwrap_or(ptr::null_mut())
-                )
-            )
-        })?;
+                    &mut diagnostics)
+                ))
+        }, diagnostics)?;
+
+
 
         Ok(Blob(code))
     }
@@ -939,7 +944,7 @@ impl Session {
         };
 
         if module.is_null() {
-            utils::Result::Err(0)
+            utils::Result::Err(Error::Result(0))
         } else {
             Ok(Module(module))
         }
@@ -971,7 +976,7 @@ impl Session {
         };
 
         if module.is_null() {
-            utils::Result::Err(0)
+            utils::Result::Err(Error::Result(0))
         } else {
             Ok(Module(module))
         }
