@@ -1,12 +1,13 @@
 use thiserror::Error;
-use crate::{Blob, sys};
+
+use crate::{sys, Blob};
 
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("{0}")]
     Result(sys::SlangResult),
-    #[error("{0}")]
-    Blob(Blob)
+    #[error("{:?}", .0.as_str().unwrap_or(""))]
+    Blob(Blob),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -21,7 +22,10 @@ pub(crate) fn result_from_ffi(result: sys::SlangResult) -> Result<()> {
 }
 
 #[inline]
-pub(crate) fn result_from_blob(result: sys::SlangResult, blob: *mut sys::slang_IBlob) -> Result<()> {
+pub(crate) fn result_from_blob(
+    result: sys::SlangResult,
+    blob: *mut sys::slang_IBlob,
+) -> Result<()> {
     if result < 0 {
         Err(Error::Blob(Blob(blob)))
     } else {

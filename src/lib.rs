@@ -18,10 +18,8 @@ use bitflags::bitflags;
 
 use crate::{
     sys::{vtable_call, Interface},
-    utils::{assert_size_and_align, define_interface},
+    utils::{assert_size_and_align, define_interface, Error},
 };
-use crate::utils::Error;
-use crate::utils::Result;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct CompileTarget(i32);
@@ -566,24 +564,25 @@ impl Module {
         &mut self,
         name: &str,
         stage: Stage,
-        diagnostics: Option<&mut Blob>,
     ) -> utils::Result<EntryPoint> {
         let name = CString::new(name).unwrap();
         let mut entry_point = ptr::null_mut();
+        let mut diagnostics = ptr::null_mut();
 
-        utils::result_from_ffi(unsafe {
-            vtable_call!(
-                self.0,
-                findAndCheckEntryPoint(
-                    name.as_ptr(),
-                    stage.0,
-                    &mut entry_point,
-                    diagnostics
-                        .map(|e| &mut e.0 as *mut _)
-                        .unwrap_or(ptr::null_mut())
+        utils::result_from_blob(
+            unsafe {
+                vtable_call!(
+                    self.0,
+                    findAndCheckEntryPoint(
+                        name.as_ptr(),
+                        stage.0,
+                        &mut entry_point,
+                        &mut diagnostics
+                    )
                 )
-            )
-        })?;
+            },
+            diagnostics,
+        )?;
         Ok(EntryPoint(entry_point))
     }
 }
@@ -742,7 +741,7 @@ impl ComponentType {
     }
 
     #[inline]
-    pub fn get_layout(&mut self, target_index: i64) -> Result<ProgramLayout> {
+    pub fn get_layout(&mut self, target_index: i64) -> Result<ProgramLayout, Error> {
         let mut diagnostics = ptr::null_mut();
 
         let program_layout =
@@ -769,18 +768,15 @@ impl ComponentType {
         let mut code = ptr::null_mut();
         let mut diagnostics = ptr::null_mut();
 
-        utils::result_from_blob(unsafe {
-            vtable_call!(
-                self.0,
-                getEntryPointCode(
-                    entry_point_index,
-                    target_index,
-                    &mut code,
-                    &mut diagnostics)
-                ))
-        }, diagnostics)?;
-
-
+        utils::result_from_blob(
+            unsafe {
+                vtable_call!(
+                    self.0,
+                    getEntryPointCode(entry_point_index, target_index, &mut code, &mut diagnostics)
+                )
+            },
+            diagnostics,
+        )?;
 
         Ok(Blob(code))
     }
@@ -805,42 +801,37 @@ impl ComponentType {
     pub fn specialize(
         &mut self,
         specialization_args: &[SpecializationArg],
-        diagnostics: Option<&mut Blob>,
     ) -> utils::Result<ComponentType> {
         let mut specialized_component_type = ptr::null_mut();
+        let mut diagnostics = ptr::null_mut();
 
-        utils::result_from_ffi(unsafe {
-            vtable_call!(
-                self.0,
-                specialize(
-                    specialization_args.as_ptr().cast(),
-                    specialization_args.len() as _,
-                    &mut specialized_component_type,
-                    diagnostics
-                        .map(|e| &mut e.0 as *mut _)
-                        .unwrap_or(ptr::null_mut())
+        utils::result_from_blob(
+            unsafe {
+                vtable_call!(
+                    self.0,
+                    specialize(
+                        specialization_args.as_ptr().cast(),
+                        specialization_args.len() as _,
+                        &mut specialized_component_type,
+                        &mut diagnostics
+                    )
                 )
-            )
-        })?;
+            },
+            diagnostics,
+        )?;
 
         Ok(ComponentType(specialized_component_type))
     }
 
     #[inline]
-    pub fn link(&mut self, diagnostics: Option<&mut Blob>) -> utils::Result<ComponentType> {
+    pub fn link(&mut self) -> utils::Result<ComponentType> {
         let mut linked_component_type = ptr::null_mut();
+        let mut diagnostics = ptr::null_mut();
 
-        utils::result_from_ffi(unsafe {
-            vtable_call!(
-                self.0,
-                link(
-                    &mut linked_component_type,
-                    diagnostics
-                        .map(|e| &mut e.0 as *mut _)
-                        .unwrap_or(ptr::null_mut())
-                )
-            )
-        })?;
+        utils::result_from_blob(
+            unsafe { vtable_call!(self.0, link(&mut linked_component_type, &mut diagnostics)) },
+            diagnostics,
+        )?;
 
         Ok(ComponentType(linked_component_type))
     }
@@ -850,23 +841,24 @@ impl ComponentType {
         &mut self,
         entry_point_index: i64,
         target_index: i64,
-        diagnostics: Option<&mut Blob>,
     ) -> utils::Result<SharedLibrary> {
         let mut shared_library = ptr::null_mut();
+        let mut diagnostics = ptr::null_mut();
 
-        utils::result_from_ffi(unsafe {
-            vtable_call!(
-                self.0,
-                getEntryPointHostCallable(
-                    entry_point_index,
-                    target_index,
-                    &mut shared_library,
-                    diagnostics
-                        .map(|e| &mut e.0 as *mut _)
-                        .unwrap_or(ptr::null_mut())
+        utils::result_from_blob(
+            unsafe {
+                vtable_call!(
+                    self.0,
+                    getEntryPointHostCallable(
+                        entry_point_index,
+                        target_index,
+                        &mut shared_library,
+                        &mut diagnostics
+                    )
                 )
-            )
-        })?;
+            },
+            diagnostics,
+        )?;
 
         Ok(SharedLibrary(shared_library))
     }
@@ -891,25 +883,27 @@ impl ComponentType {
     pub fn link_with_options(
         &mut self,
         compiler_option_entries: &[CompilerOptionEntry],
-        diagnostics: Option<&mut Blob>,
     ) -> utils::Result<ComponentType> {
         let mut linked_component_type = ptr::null_mut();
+        let mut diagnostics = ptr::null_mut();
 
-        utils::result_from_ffi(unsafe {
-            vtable_call!(
-                self.0,
-                linkWithOptions(
-                    &mut linked_component_type,
-                    compiler_option_entries.len() as _,
-                    compiler_option_entries
-                        .as_ptr()
-                        .cast::<sys::slang_CompilerOptionEntry>() as *mut _,
-                    diagnostics
-                        .map(|e| &mut e.0 as *mut _)
-                        .unwrap_or(ptr::null_mut())
+        utils::result_from_blob(
+            unsafe {
+                vtable_call!(
+                    self.0,
+                    linkWithOptions(
+                        &mut linked_component_type,
+                        compiler_option_entries.len() as _,
+                        compiler_option_entries
+                            .as_ptr()
+                            .cast::<sys::slang_CompilerOptionEntry>()
+                            as *mut _,
+                        &mut diagnostics
+                    )
                 )
-            )
-        })?;
+            },
+            diagnostics,
+        )?;
 
         Ok(ComponentType(linked_component_type))
     }
@@ -924,27 +918,15 @@ impl Session {
     }
 
     #[inline]
-    pub fn load_module(
-        &mut self,
-        module_name: &str,
-        diagnostics: Option<&mut Blob>,
-    ) -> utils::Result<Module> {
+    pub fn load_module(&mut self, module_name: &str) -> utils::Result<Module> {
         let module_name = CString::new(module_name).unwrap();
+        let mut diagnostics = ptr::null_mut();
 
-        let module = unsafe {
-            vtable_call!(
-                self.0,
-                loadModule(
-                    module_name.as_ptr(),
-                    diagnostics
-                        .map(|e| &mut e.0 as *mut _)
-                        .unwrap_or(ptr::null_mut())
-                )
-            )
-        };
+        let module =
+            unsafe { vtable_call!(self.0, loadModule(module_name.as_ptr(), &mut diagnostics)) };
 
         if module.is_null() {
-            utils::Result::Err(Error::Result(0))
+            Err(Error::Blob(Blob(diagnostics)))
         } else {
             Ok(Module(module))
         }
@@ -956,10 +938,10 @@ impl Session {
         module_name: &str,
         path: &str,
         source: &Blob,
-        diagnostics: Option<&mut Blob>,
     ) -> utils::Result<Module> {
         let module_name = CString::new(module_name).unwrap();
         let path = CString::new(path).unwrap();
+        let mut diagnostics = ptr::null_mut();
 
         let module = unsafe {
             vtable_call!(
@@ -968,9 +950,7 @@ impl Session {
                     module_name.as_ptr(),
                     path.as_ptr(),
                     source.0,
-                    diagnostics
-                        .map(|e| &mut e.0 as *mut _)
-                        .unwrap_or(ptr::null_mut())
+                    &mut diagnostics
                 )
             )
         };
@@ -986,23 +966,24 @@ impl Session {
     pub fn create_composite_component_type(
         &mut self,
         component_types: &[ComponentType],
-        diagnostics: Option<&mut Blob>,
     ) -> utils::Result<ComponentType> {
         let mut composite_component_type = ptr::null_mut();
+        let mut diagnostics = ptr::null_mut();
 
-        utils::result_from_ffi(unsafe {
-            vtable_call!(
-                self.0,
-                createCompositeComponentType(
-                    component_types.as_ptr().cast(),
-                    component_types.len() as _,
-                    &mut composite_component_type,
-                    diagnostics
-                        .map(|e| &mut e.0 as *mut _)
-                        .unwrap_or(ptr::null_mut())
+        utils::result_from_blob(
+            unsafe {
+                vtable_call!(
+                    self.0,
+                    createCompositeComponentType(
+                        component_types.as_ptr().cast(),
+                        component_types.len() as _,
+                        &mut composite_component_type,
+                        &mut diagnostics
+                    )
                 )
-            )
-        })?;
+            },
+            diagnostics,
+        )?;
         Ok(ComponentType(composite_component_type))
     }
 

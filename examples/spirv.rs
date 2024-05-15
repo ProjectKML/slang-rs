@@ -35,17 +35,14 @@ void main() {
     );
 
     let mut module = session
-        .load_module_from_source("example", "example.slang", &blob, None)
+        .load_module_from_source("example", "example.slang", &blob)
         .unwrap();
 
     let entry_point = module.find_entry_point_by_name("main").unwrap();
 
     let mut program = session
-        .create_composite_component_type(
-            &[module.deref().clone(), entry_point.deref().clone()],
-            None,
-        )
+        .create_composite_component_type(&[module.deref().clone(), entry_point.deref().clone()])
         .unwrap();
-    let mut linked_program = program.link(None).unwrap();
-    let code = linked_program.get_entry_point_code(0, 0, None).unwrap();
+    let mut linked_program = program.link().unwrap();
+    let code = linked_program.get_entry_point_code(0, 0).unwrap();
 }
