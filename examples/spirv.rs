@@ -15,7 +15,7 @@ fn main() {
 
     let session_desc = SessionDescBuilder::default().targets(slice::from_ref(&target_desc));
 
-    let mut session = global_session.create_session(&session_desc).unwrap();
+    let mut session = global_session.create_session(session_desc).unwrap();
 
     let blob = Blob::from(
         r#"
@@ -43,7 +43,7 @@ void main() {
     let mut program = session
         .create_composite_component_type(&[module.deref().clone(), entry_point.deref().clone()])
         .unwrap();
-    let mut linked_program = program.link().unwrap();
+    let linked_program = program.link().unwrap();
     let code = linked_program.get_entry_point_code(0, 0).unwrap();
     println!("{:?}", code.as_slice());
 }

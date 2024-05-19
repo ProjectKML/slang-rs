@@ -96,6 +96,13 @@ macro_rules! assert_size_and_align {
 
 pub(crate) use assert_size_and_align;
 
+pub(crate) const UNKNOWN_UUID: sys::SlangUUID = sys::SlangUUID {
+    data1: 0x67618701,
+    data2: 0xd116,
+    data3: 0x468f,
+    data4: [0xab, 0x3b, 0x47, 0x4b, 0xed, 0xce, 0xe, 0x3d],
+};
+
 pub(crate) const S_OK: sys::SlangResult = 0;
 pub(crate) const E_INVALIDARG: sys::SlangResult = -2147024809;
 pub(crate) const E_NOINTERFACE: sys::SlangResult = -2147467262;

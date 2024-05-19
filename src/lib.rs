@@ -1,3 +1,4 @@
+mod impls;
 mod utils;
 
 pub mod sys {
@@ -6,17 +7,18 @@ pub mod sys {
 
 use std::{
     ffi::{c_char, c_void, CStr, CString},
+    io,
     marker::PhantomData,
     mem,
     ops::Deref,
     ptr, slice,
     str::Utf8Error,
-    sync::atomic::{AtomicU32, Ordering},
 };
 
 use bitflags::bitflags;
 
 use crate::{
+    impls::{FileSystemImpl, StaticBlobImpl},
     sys::{vtable_call, Interface},
     utils::{assert_size_and_align, define_interface, Error},
 };
@@ -378,6 +380,10 @@ impl MatrixLayoutMode {
         Self(sys::SlangMatrixLayoutMode_SLANG_MATRIX_LAYOUT_COLUMN_MAJOR as _);
 }
 
+pub trait FileSystem {
+    fn load_file(&mut self, path: &str) -> io::Result<String>;
+}
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct PreprocessorMacroDesc {
@@ -418,20 +424,23 @@ impl Default for SessionDesc {
     }
 }
 
-#[repr(transparent)]
-pub struct SessionDescBuilder<'a>(SessionDesc, PhantomData<&'a ()>);
+pub struct SessionDescBuilder<'a> {
+    desc: SessionDesc,
+    file_system: Option<Box<dyn FileSystem>>,
+    phantom: PhantomData<&'a ()>,
+}
 
 impl SessionDescBuilder<'_> {
     #[inline]
     pub fn targets(mut self, targets: &[TargetDescBuilder]) -> Self {
-        self.0.targets = targets.as_ptr().cast();
-        self.0.target_count = targets.len() as _;
+        self.desc.targets = targets.as_ptr().cast();
+        self.desc.target_count = targets.len() as _;
         self
     }
 
     #[inline]
     pub fn flags(mut self, flags: SessionFlags) -> Self {
-        self.0.flags = flags;
+        self.desc.flags = flags;
         self
     }
 
@@ -440,19 +449,25 @@ impl SessionDescBuilder<'_> {
         mut self,
         default_matrix_layout_mode: MatrixLayoutMode,
     ) -> Self {
-        self.0.default_matrix_layout_mode = default_matrix_layout_mode;
+        self.desc.default_matrix_layout_mode = default_matrix_layout_mode;
         self
     }
 
     #[inline]
     pub fn enable_effect_annotations(mut self, enable_effect_annotations: bool) -> Self {
-        self.0.enable_effect_annotations = enable_effect_annotations;
+        self.desc.enable_effect_annotations = enable_effect_annotations;
+        self
+    }
+
+    #[inline]
+    pub fn file_system(mut self, file_system: impl FileSystem + 'static) -> Self {
+        self.file_system = Some(Box::new(file_system));
         self
     }
 
     #[inline]
     pub fn allow_glsl_syntax(mut self, allow_glsl_syntax: bool) -> Self {
-        self.0.allow_glsl_syntax = allow_glsl_syntax;
+        self.desc.allow_glsl_syntax = allow_glsl_syntax;
         self
     }
 }
@@ -460,13 +475,14 @@ impl SessionDescBuilder<'_> {
 impl Default for SessionDescBuilder<'_> {
     #[inline]
     fn default() -> Self {
-        Self(
-            SessionDesc {
+        Self {
+            desc: SessionDesc {
                 structure_size: mem::size_of::<SessionDesc>(),
                 ..Default::default()
             },
-            PhantomData,
-        )
+            file_system: None,
+            phantom: PhantomData,
+        }
     }
 }
 
@@ -613,76 +629,7 @@ impl Blob {
 
 impl From<&'static [u8]> for Blob {
     fn from(value: &'static [u8]) -> Self {
-        unsafe extern "C" fn query_interface(
-            this: *mut sys::ISlangUnknown,
-            uuid: *const sys::SlangUUID,
-            out_object: *mut *mut c_void,
-        ) -> sys::SlangResult {
-            if out_object.is_null() {
-                return utils::E_INVALIDARG;
-            }
-
-            if libc::memcmp(
-                uuid.cast(),
-                &sys::slang_IBlob::UUID as *const _ as *const _,
-                mem::size_of::<sys::SlangUUID>(),
-            ) == 0
-            {
-                ((*(*this).vtable_).ISlangUnknown_addRef)(this);
-                *out_object = this.cast();
-                utils::S_OK
-            } else {
-                utils::E_NOINTERFACE
-            }
-        }
-
-        unsafe extern "C" fn add_ref(this: *mut sys::ISlangUnknown) -> u32 {
-            (*this.cast::<BlobImpl>())
-                .ref_count
-                .fetch_add(1, Ordering::SeqCst)
-        }
-
-        unsafe extern "C" fn release(this: *mut sys::ISlangUnknown) -> u32 {
-            let ref_count = (*this.cast::<BlobImpl>())
-                .ref_count
-                .fetch_sub(1, Ordering::SeqCst);
-            if ref_count == 1 {
-                let _ = Box::from_raw(this.cast::<BlobImpl>());
-            }
-
-            ref_count
-        }
-
-        unsafe extern "C" fn get_buffer_pointer(this: *mut sys::slang_IBlob) -> *const c_void {
-            (*this.cast::<BlobImpl>()).value.as_ptr().cast()
-        }
-
-        unsafe extern "C" fn get_buffer_size(this: *mut sys::slang_IBlob) -> usize {
-            (*this.cast::<BlobImpl>()).value.len()
-        }
-
-        const VTBL: sys::slang_IBlobVtbl = sys::slang_IBlobVtbl {
-            _base: sys::ISlangUnknown__bindgen_vtable {
-                ISlangUnknown_queryInterface: query_interface,
-                ISlangUnknown_addRef: add_ref,
-                ISlangUnknown_release: release,
-            },
-            getBufferPointer: get_buffer_pointer,
-            getBufferSize: get_buffer_size,
-        };
-
-        #[repr(C)]
-        struct BlobImpl {
-            vtbl: *const sys::slang_IBlobVtbl,
-            ref_count: AtomicU32,
-            value: &'static [u8],
-        }
-
-        let blob = Box::leak(Box::new(BlobImpl {
-            vtbl: &VTBL,
-            ref_count: AtomicU32::new(1),
-            value,
-        }));
+        let blob = Box::leak(Box::new(StaticBlobImpl::new(value)));
 
         Blob(blob as *mut _ as *mut _)
     }
@@ -1026,12 +973,19 @@ impl GlobalSession {
     }
 
     #[inline]
-    pub fn create_session(&self, desc: &SessionDescBuilder) -> utils::Result<Session> {
+    pub fn create_session(&self, builder: SessionDescBuilder) -> utils::Result<Session> {
+        let mut desc = builder.desc;
+        if let Some(file_system) = builder.file_system {
+            let file_system = Box::leak(Box::new(FileSystemImpl::new(file_system)));
+
+            desc.file_system = file_system as *mut _ as *mut _;
+        }
+
         let mut session = ptr::null_mut();
         utils::result_from_ffi(unsafe {
             vtable_call!(
                 self.0,
-                createSession(&desc.0 as *const SessionDesc as *const _, &mut session)
+                createSession(&desc as *const SessionDesc as *const _, &mut session)
             )
         })?;
         Ok(Session(session))
