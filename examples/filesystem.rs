@@ -1,26 +1,53 @@
-use std::{ops::Deref, slice};
+use std::{collections::HashMap, ops::Deref, slice};
 
 use slang::{
     CompileTarget, FileSystem, GlobalSession, SessionDescBuilder, TargetDescBuilder, TargetFlags,
 };
 
-struct MyFileSystem;
+struct MyFileSystem(HashMap<String, String>);
 
-impl FileSystem for MyFileSystem {
-    fn load_file(&mut self, path: &str) -> Option<String> {
-        if path.ends_with(".slang") {
-            Some(
-                r#"
+impl MyFileSystem {
+    fn new() -> Self {
+        let mut m = HashMap::new();
+
+        m.insert(
+            "utils.slang".to_owned(),
+            r#"
+func get_increment() -> uint {
+    return 1;
+}
+"#
+            .to_owned(),
+        );
+
+        m.insert(
+            "example.slang".to_owned(),
+            r#"
+import utils;
+
+struct MyValue {
+    uint value;
+}
+
+[[vk::push_constant]] struct PushConstants {
+    MyValue* my_ptr;
+} constants;
+
 [shader("compute")]
 [numthreads(1, 1, 1)]
 void main() {
+    InterlockedAdd(constants.my_ptr.value, get_increment());
+}"#
+            .to_owned(),
+        );
+
+        Self(m)
+    }
 }
-            "#
-                .to_owned(),
-            )
-        } else {
-            None
-        }
+
+impl FileSystem for MyFileSystem {
+    fn load_file(&mut self, path: &str) -> Option<String> {
+        self.0.get(path).cloned()
     }
 }
 
@@ -35,7 +62,7 @@ fn main() {
 
     let session_desc = SessionDescBuilder::default()
         .targets(slice::from_ref(&target_desc))
-        .file_system(MyFileSystem);
+        .file_system(MyFileSystem::new());
 
     let mut session = global_session.create_session(session_desc).unwrap();
     let mut module = session.load_module("example").unwrap();
