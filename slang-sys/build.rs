@@ -11,6 +11,8 @@ fn generate_bindings() {
         .clang_arg("-std=c++17")
         .allowlist_function("slang_.*")
         .allowlist_type("slang.*")
+        .allowlist_type("FileSystemContentsCallBack")
+        .allowlist_type("PathKind")
         .allowlist_var("SLANG_.*")
         .with_codegen_config(
             bindgen::CodegenConfig::FUNCTIONS
@@ -30,22 +32,22 @@ fn generate_bindings() {
 fn main() {
     generate_bindings();
 
-    /*let path = cmake::Config::new("vendor/slang")
-        .define("SLANG_LIB_TYPE", "STATIC")
-        .build();
-
-    println!("cargo:rustc-link-lib=static={:?}", path.join("lib").join("slang.lib"));*/
-
-    #[cfg(target_os = "windows")]
+    #[cfg(feature = "static")]
     {
-        println!("cargo:rustc-link-search=native={}", "C:/Users/beastle9end/Documents/Programs/slang");
+        let path = cmake::Config::new("vendor/slang")
+            .define("SLANG_LIB_TYPE", "STATIC")
+            .build();
 
+        println!("cargo:rustc-link-lib=static={:?}", path.join("lib").join("slang.lib"));
     }
 
     #[cfg(not(feature = "static"))]
     {
         #[cfg(any(target_os = "windows", target_os = "linux"))]
-        println!("cargo:rustc-link-lib=static=slang");
+        {
+            println!("cargo:rustc-link-search=native={}", "C:/Users/beastle9end/Documents/Programs/slang");
+            println!("cargo:rustc-link-lib=static=slang");
+        }
 
         #[cfg(target_os = "macos")]
         println!("cargo:rustc-link-lib=dylib=slang");

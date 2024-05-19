@@ -70,6 +70,26 @@ interface!(ISlangCastable, [0x87ede0e1, 0x4852, 0x44b0, {0x8b, 0xf2, 0xcb, 0x31,
 
 });
 
+interface!(ISlangFileSystem, [0x003A09FC, 0x3A4D, 0x4BA0, {0xAD, 0x60, 0x1F, 0xD8, 0x63, 0xA9, 0x15, 0xAB}]: ISlangCastable, {
+	loadFile: unsafe extern "C" fn(*mut ISlangFileSystem, path: *const c_char, out_blob: *mut *mut slang_IBlob) -> SlangResult,
+});
+
+interface!(ISlangFileSystemExt, [0x5fb632d2, 0x979d, 0x4481, {0x9f, 0xee, 0x66, 0x3c, 0x3f, 0x14, 0x49, 0xe1}]: ISlangFileSystem, {
+	getFileUniqueIdentity: unsafe extern "C" fn(*mut ISlangFileSystemExt, path: *const c_char, outUniqueIdentity: *mut *mut slang_IBlob) -> SlangResult,
+	calcCombinedPath: unsafe extern "C" fn(*mut ISlangFileSystemExt, fromPathType: SlangPathType, fromPath: *const c_char, path: *const c_char, path_out: *mut *mut slang_IBlob) -> SlangResult,
+	getPathType: unsafe extern "C" fn(*mut ISlangFileSystemExt, path: *const char, pathTypeOut: SlangPathType) -> SlangResult,
+	getPath: unsafe extern "C" fn(*mut ISlangFileSystemExt, kind: PathKind, path: *const char, outPath: *mut *mut slang_IBlob) -> SlangResult,
+	clearCache: unsafe extern "C" fn(*mut ISlangFileSystemExt),
+	enumeratePathContents: unsafe extern "C" fn(*mut ISlangFileSystemExt, callback: FileSystemContentsCallBack, userData: *mut c_void) -> SlangResult,
+});
+
+interface!(ISlangMutableFileSystem, [0xa058675c, 0x1d65, 0x452a, { 0x84, 0x58, 0xcc, 0xde, 0xd1, 0x42, 0x71, 0x5 }]: ISlangFileSystemExt, {
+	saveFile: unsafe extern "C" fn(*mut ISlangMutableFileSystem, path: *const c_char, data: *const c_void, size: usize) -> SlangResult,
+	saveFileBlob: unsafe extern "C" fn(*mut ISlangMutableFileSystem, path: *const c_char, dataBlob: *mut slang_IBlob) -> SlangResult,
+	remove: unsafe extern "C" fn(*mut ISlangMutableFileSystem, path: *const c_char) -> SlangResult,
+	createDirectory: unsafe extern "C" fn(*mut ISlangMutableFileSystem, path: *const c_char) -> SlangResult,
+});
+
 interface!(ISlangSharedLibrary, [0x70dbc7c4, 0xdc3b, 0x4a07, {0xae, 0x7e, 0x75, 0x2a, 0xf6, 0xa8, 0x15, 0x55}]: ISlangCastable, {
 	findSymbolAddressByName: unsafe extern "C" fn(*mut ISlangSharedLibrary, name: *const c_char) -> *mut c_void,
 });

@@ -45,5 +45,5 @@ void main() {
         .unwrap();
     let mut linked_program = program.link().unwrap();
     let code = linked_program.get_entry_point_code(0, 0).unwrap();
-    println!("{:?}", blob.as_slice());
+    println!("{:?}", code.as_slice());
 }
