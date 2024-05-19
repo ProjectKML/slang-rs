@@ -7,7 +7,6 @@ pub mod sys {
 
 use std::{
     ffi::{c_char, c_void, CStr, CString},
-    io,
     marker::PhantomData,
     mem,
     ops::Deref,
@@ -381,7 +380,7 @@ impl MatrixLayoutMode {
 }
 
 pub trait FileSystem {
-    fn load_file(&mut self, path: &str) -> io::Result<String>;
+    fn load_file(&mut self, path: &str) -> Option<String>;
 }
 
 #[repr(C)]

@@ -1,4 +1,4 @@
-use std::slice;
+use std::{ops::Deref, slice};
 
 use slang::{
     CompileTarget, FileSystem, GlobalSession, SessionDescBuilder, TargetDescBuilder, TargetFlags,
@@ -7,12 +7,20 @@ use slang::{
 struct MyFileSystem;
 
 impl FileSystem for MyFileSystem {
-    fn load_file(&mut self, path: &str) -> std::io::Result<String> {
-        println!("{path}");
-        Ok(r#"
-
-        "#
-        .to_owned())
+    fn load_file(&mut self, path: &str) -> Option<String> {
+        if path.ends_with(".slang") {
+            Some(
+                r#"
+[shader("compute")]
+[numthreads(1, 1, 1)]
+void main() {
+}
+            "#
+                .to_owned(),
+            )
+        } else {
+            None
+        }
     }
 }
 
@@ -30,5 +38,14 @@ fn main() {
         .file_system(MyFileSystem);
 
     let mut session = global_session.create_session(session_desc).unwrap();
-    let module = session.load_module("example").unwrap();
+    let mut module = session.load_module("example").unwrap();
+
+    let entry_point = module.find_entry_point_by_name("main").unwrap();
+
+    let mut program = session
+        .create_composite_component_type(&[module.deref().clone(), entry_point.deref().clone()])
+        .unwrap();
+    let linked_program = program.link().unwrap();
+    let code = linked_program.get_entry_point_code(0, 0).unwrap();
+    println!("{:?}", code.as_slice());
 }

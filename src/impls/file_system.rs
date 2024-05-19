@@ -1,6 +1,6 @@
 use std::{
     ffi::{c_char, c_void, CStr},
-    mem,
+    mem, ptr,
     sync::atomic::{AtomicU32, Ordering},
 };
 
@@ -59,7 +59,12 @@ unsafe extern "C" fn release(this: *mut sys::ISlangUnknown) -> u32 {
 }
 
 unsafe extern "C" fn cast_as(this: *mut sys::ISlangCastable, guid: &sys::SlangUUID) -> *mut c_void {
-    this.cast() //TODO:
+    let mut object = ptr::null_mut();
+    if query_interface(this.cast(), guid as *const _, &mut object) == utils::S_OK {
+        object
+    } else {
+        ptr::null_mut()
+    }
 }
 
 unsafe extern "C" fn load_file(
@@ -75,7 +80,7 @@ unsafe extern "C" fn load_file(
 
     let path = CStr::from_ptr(path).to_string_lossy();
 
-    if let Ok(content) = wrapper.load_file(&path) {
+    if let Some(content) = wrapper.load_file(&path) {
         let blob = Box::leak(Box::new(OwnedBlobImpl::new(content.into_bytes())));
         *out_blob = blob as *mut _ as *mut _;
 
