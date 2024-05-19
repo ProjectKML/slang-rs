@@ -1,4 +1,4 @@
-use std::{mem, ops::Deref, slice};
+use std::{ops::Deref, slice};
 
 use slang::{
     Blob, CompileTarget, GlobalSession, SessionDescBuilder, TargetDescBuilder, TargetFlags,
@@ -45,4 +45,5 @@ void main() {
         .unwrap();
     let mut linked_program = program.link().unwrap();
     let code = linked_program.get_entry_point_code(0, 0).unwrap();
+    println!("{:?}", blob.as_slice());
 }

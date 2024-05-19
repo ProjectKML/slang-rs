@@ -10,3 +10,7 @@ paste = "1.0.14"
 slang-sys = { path = "slang-sys" }
 static_assertions = "1.1.0"
 thiserror = "1.0.58"
+
+[features]
+default = []
+static = ["slang-sys/static"]

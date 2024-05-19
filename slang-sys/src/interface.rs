@@ -1,4 +1,3 @@
-use std::mem;
 use crate::{ISlangUnknown__bindgen_vtable, SlangUUID};
 
 pub unsafe trait Interface : Sized {
