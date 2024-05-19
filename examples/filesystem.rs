@@ -8,6 +8,7 @@ struct MyFileSystem;
 
 impl FileSystem for MyFileSystem {
     fn load_file(&mut self, path: &str) -> std::io::Result<String> {
+        println!("{path}");
         Ok(r#"
 
         "#
@@ -29,5 +30,5 @@ fn main() {
         .file_system(MyFileSystem);
 
     let mut session = global_session.create_session(session_desc).unwrap();
-    //let module = session.load_module("example").unwrap();
+    let module = session.load_module("example").unwrap();
 }

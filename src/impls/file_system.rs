@@ -58,6 +58,10 @@ unsafe extern "C" fn release(this: *mut sys::ISlangUnknown) -> u32 {
     ref_count
 }
 
+unsafe extern "C" fn cast_as(this: *mut sys::ISlangCastable, guid: &sys::SlangUUID) -> *mut c_void {
+    this.cast() //TODO:
+}
+
 unsafe extern "C" fn load_file(
     this: *mut sys::ISlangFileSystem,
     path: *const c_char,
@@ -71,8 +75,8 @@ unsafe extern "C" fn load_file(
 
     let path = CStr::from_ptr(path).to_string_lossy();
 
-    if let Ok(bytes) = wrapper.load_file(&path) {
-        let blob = Box::leak(Box::new(OwnedBlobImpl::new(bytes.into_bytes())));
+    if let Ok(content) = wrapper.load_file(&path) {
+        let blob = Box::leak(Box::new(OwnedBlobImpl::new(content.into_bytes())));
         *out_blob = blob as *mut _ as *mut _;
 
         utils::S_OK
@@ -88,6 +92,7 @@ const VTBL: sys::ISlangFileSystemVtbl = sys::ISlangFileSystemVtbl {
             ISlangUnknown_addRef: add_ref,
             ISlangUnknown_release: release,
         },
+        castAs: cast_as,
     },
     loadFile: load_file,
 };
