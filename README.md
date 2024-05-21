@@ -4,12 +4,26 @@
 
 **Rust bindings for [Slang](https://github.com/shader-slang/slang)**
 
+[projectkml-badge]: https://img.shields.io/badge/projectkml-open%20source-blueviolet.svg
+[projectkml-url]: https://github.com/ProjectKML
 
-[![ProjectKML](https://img.shields.io/badge/projectkml-open%20source-blueviolet.svg)](https://github.com/ProjectKML)
-[![Crates.io](https://img.shields.io/crates/v/slang-rs.svg)](https://crates.io/crates/slang-rs)
-[![Docs](https://docs.rs/slang-rs/badge.svg)](https://docs.rs/slang-rs)
-[![dependency status](https://deps.rs/repo/github/ProjectKML/slang-rs/status.svg)](https://deps.rs/repo/github/ProjectKML/slang-rs)
-[![Build status](https://github.com/ProjectKML/slang-rs/workflows/CI/badge.svg)](https://github.com/ProjectKML/slang-rs/actions)
+[crates-badge]: https://img.shields.io/crates/v/slang-rs.svg
+[crates-url]: https://crates.io/crates/slang-rs
+
+[docs-badge]: https://docs.rs/slang-rs/badge.svg
+[docs-url]: https://docs.rs/slang-rs
+
+[dependency-badge]: https://deps.rs/repo/github/ProjectKML/slang-rs/status.svg 
+[dependency-url]: https://deps.rs/repo/github/ProjectKML/slang-rs
+
+[build-badge]: https://github.com/ProjectKML/slang-rs/workflows/CI/badge.svg
+[build-url]: https://github.com/ProjectKML/slang-rs/actions
+
+[![ProjectKML][projectkml-badge]][projectkml-url]
+[![Crates.io][crates-badge]][crates-url]
+[![Docs][docs-badge]][docs-url]
+[![Dependency status][dependency-badge]][dependency-url]
+[![Build status][build-badge]][build-url]
 </div>
 
 ## Contributing
