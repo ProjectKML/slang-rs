@@ -80,11 +80,24 @@ unsafe extern "C" fn load_file(
 
     let path = CStr::from_ptr(path).to_string_lossy();
 
-    if let Some(content) = wrapper.load_file(&path) {
-        let blob = Box::leak(Box::new(OwnedBlobImpl::new(content.into_bytes())));
-        *out_blob = blob as *mut _ as *mut _;
+    if path.ends_with(".slang_module") {
+        match wrapper.load_module(&path) {
+            Some(blob) => {
+                *out_blob == blob.0;
+                utils::S_OK
+            }
+            None => utils::E_INVALIDARG,
+        }
+    } else if path.ends_with(".slang") {
+        match wrapper.load_source(&path) {
+            Some(content) => {
+                let blob = Box::leak(Box::new(OwnedBlobImpl::new(content.into_bytes())));
+                *out_blob = blob as *mut _ as *mut _;
 
-        utils::S_OK
+                utils::S_OK
+            }
+            None => utils::E_INVALIDARG,
+        }
     } else {
         utils::E_INVALIDARG
     }

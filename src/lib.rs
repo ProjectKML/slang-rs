@@ -380,7 +380,8 @@ impl MatrixLayoutMode {
 }
 
 pub trait FileSystem {
-    fn load_file(&mut self, path: &str) -> Option<String>;
+    fn load_module(&mut self, path: &str) -> Option<Blob>;
+    fn load_source(&mut self, path: &str) -> Option<String>;
 }
 
 #[repr(C)]
