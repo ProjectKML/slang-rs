@@ -16,10 +16,11 @@ use std::{
 
 use bitflags::bitflags;
 
+pub use crate::utils::{Error, IntoError};
 use crate::{
-    impls::{FileSystemImpl, StaticBlobImpl},
+    impls::{FileSystemImpl, OwnedBlobImpl, StaticBlobImpl},
     sys::{vtable_call, Interface},
-    utils::{assert_size_and_align, define_interface, Error},
+    utils::{assert_size_and_align, define_interface},
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -380,8 +381,7 @@ impl MatrixLayoutMode {
 }
 
 pub trait FileSystem {
-    fn load_module(&mut self, path: &str) -> Option<Blob>;
-    fn load_source(&mut self, path: &str) -> Option<String>;
+    fn load_file(&mut self, path: &str) -> utils::Result<Blob>;
 }
 
 #[repr(C)]
@@ -628,6 +628,7 @@ impl Blob {
 }
 
 impl From<&'static [u8]> for Blob {
+    #[inline]
     fn from(value: &'static [u8]) -> Self {
         let blob = Box::leak(Box::new(StaticBlobImpl::new(value)));
 
@@ -639,6 +640,22 @@ impl From<&'static str> for Blob {
     #[inline]
     fn from(value: &'static str) -> Self {
         Self::from(value.as_bytes())
+    }
+}
+
+impl From<Vec<u8>> for Blob {
+    #[inline]
+    fn from(value: Vec<u8>) -> Self {
+        let blob = Box::leak(Box::new(OwnedBlobImpl::new(value)));
+
+        Blob(blob as *mut _ as *mut _)
+    }
+}
+
+impl From<String> for Blob {
+    #[inline]
+    fn from(value: String) -> Self {
+        Self::from(value.into_bytes())
     }
 }
 

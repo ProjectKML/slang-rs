@@ -1,8 +1,8 @@
 use std::{collections::HashMap, ops::Deref, slice};
 
 use slang::{
-    Blob, CompileTarget, FileSystem, GlobalSession, SessionDescBuilder, TargetDescBuilder,
-    TargetFlags,
+    Blob, CompileTarget, FileSystem, GlobalSession, IntoError, SessionDescBuilder,
+    TargetDescBuilder, TargetFlags,
 };
 
 struct MyFileSystem(HashMap<String, String>);
@@ -47,13 +47,13 @@ void main() {
 }
 
 impl FileSystem for MyFileSystem {
-    fn load_module(&mut self, path: &str) -> Option<Blob> {
-        println!("{path}");
-        None
-    }
-
-    fn load_source(&mut self, path: &str) -> Option<String> {
-        self.0.get(path).cloned()
+    fn load_file(&mut self, path: &str) -> Result<Blob, slang::Error> {
+        println!("Load file: {path}");
+        self.0
+            .get(path)
+            .cloned()
+            .map(|source| Blob::from(source))
+            .into_error()
     }
 }
 

@@ -6,7 +6,7 @@ use std::{
 
 use slang_sys::Interface;
 
-use crate::{impls::OwnedBlobImpl, sys, utils, FileSystem};
+use crate::{sys, utils, Error, FileSystem};
 
 unsafe extern "C" fn query_interface(
     this: *mut sys::ISlangUnknown,
@@ -80,26 +80,22 @@ unsafe extern "C" fn load_file(
 
     let path = CStr::from_ptr(path).to_string_lossy();
 
-    if path.ends_with(".slang_module") {
-        match wrapper.load_module(&path) {
-            Some(blob) => {
-                *out_blob == blob.0;
-                utils::S_OK
-            }
-            None => utils::E_INVALIDARG,
+    match wrapper.load_file(&path) {
+        Ok(blob) => {
+            *out_blob = blob.0;
+            mem::forget(blob);
+            utils::S_OK
         }
-    } else if path.ends_with(".slang") {
-        match wrapper.load_source(&path) {
-            Some(content) => {
-                let blob = Box::leak(Box::new(OwnedBlobImpl::new(content.into_bytes())));
-                *out_blob = blob as *mut _ as *mut _;
-
-                utils::S_OK
+        Err(error) => {
+            match error {
+                Error::Result(result) => result,
+                Error::Blob(blob) => {
+                    *out_blob = blob.0;
+                    mem::forget(blob);
+                    utils::E_INVALIDARG
+                }
             }
-            None => utils::E_INVALIDARG,
         }
-    } else {
-        utils::E_INVALIDARG
     }
 }
 
