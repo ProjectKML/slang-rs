@@ -920,7 +920,7 @@ impl Session {
         };
 
         if module.is_null() {
-            utils::Result::Err(Error::Result(0))
+            Err(Error::Blob(Blob(diagnostics)))
         } else {
             Ok(Module(module))
         }
