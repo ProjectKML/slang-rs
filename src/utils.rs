@@ -26,7 +26,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 impl<T> IntoError<T> for Option<T> {
     #[inline]
     fn into_error(self) -> Result<T> {
-        self.ok_or(Error::Result(E_INVALIDARG))
+        self.ok_or(Error::default())
     }
 }
 
