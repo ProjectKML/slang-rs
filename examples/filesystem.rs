@@ -48,7 +48,6 @@ void main() {
 
 impl FileSystem for MyFileSystem {
     fn load_file(&mut self, path: &str) -> Result<Blob, slang::Error> {
-        println!("Load file: {path}");
         self.0
             .get(path)
             .cloned()

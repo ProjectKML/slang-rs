@@ -10,6 +10,13 @@ pub enum Error {
     Blob(Blob),
 }
 
+impl Default for Error {
+    #[inline]
+    fn default() -> Self {
+        Self::Result(E_INVALIDARG)
+    }
+}
+
 pub trait IntoError<T> {
     fn into_error(self) -> Result<T>;
 }
