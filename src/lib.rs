@@ -7,6 +7,7 @@ pub mod sys {
 
 use std::{
     ffi::{c_char, c_void, CStr, CString},
+    fmt::{Debug, Formatter},
     marker::PhantomData,
     mem,
     ops::Deref,
@@ -627,6 +628,16 @@ impl Blob {
     }
 }
 
+impl Debug for Blob {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self.as_str() {
+            Ok(text) => write!(f, "{text}"),
+            Err(_) => self.0.fmt(f),
+        }
+    }
+}
+
 impl From<&'static [u8]> for Blob {
     #[inline]
     fn from(value: &'static [u8]) -> Self {
@@ -683,9 +694,9 @@ impl Default for SpecializationArg {
 
 assert_size_and_align!(SpecializationArg, sys::slang_SpecializationArg);
 
-define_interface!(ProgramLayout, sys::slang_ProgramLayout);
+define_interface!(ProgramLayout, sys::slang_ProgramLayout, Debug);
 
-define_interface!(SharedLibrary, sys::ISlangSharedLibrary);
+define_interface!(SharedLibrary, sys::ISlangSharedLibrary, Debug);
 
 impl SharedLibrary {
     #[inline]
@@ -696,7 +707,7 @@ impl SharedLibrary {
     }
 }
 
-define_interface!(ComponentType, sys::slang_IComponentType);
+define_interface!(ComponentType, sys::slang_IComponentType, Debug);
 
 impl ComponentType {
     #[inline]
@@ -873,7 +884,7 @@ impl ComponentType {
     }
 }
 
-define_interface!(Session, sys::slang_ISession);
+define_interface!(Session, sys::slang_ISession, Debug);
 
 impl Session {
     #[inline]
@@ -966,7 +977,7 @@ impl Session {
     //TODO: getTypeConformanceWitnessSequentialID
 }
 
-define_interface!(GlobalSession, sys::slang_IGlobalSession);
+define_interface!(GlobalSession, sys::slang_IGlobalSession, Debug);
 
 impl GlobalSession {
     #[inline]

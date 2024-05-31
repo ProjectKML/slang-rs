@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use thiserror::Error;
 
 use crate::{sys, Blob};
@@ -53,6 +55,28 @@ pub(crate) fn result_from_blob(
 
 macro_rules! define_interface {
     ($name: ident, $sys_ty: ty) => {
+        paste::paste! {
+            #[repr(transparent)]
+            pub struct $name(*mut $sys_ty);
+
+            impl $name {
+                #[inline]
+                pub fn as_raw(&self) -> *mut $sys_ty {
+                    self.0
+                }
+            }
+
+            impl Clone for $name {
+                fn clone(&self) -> Self {
+                    unsafe {
+                        ((*self.0).unknown_vtable().ISlangUnknown_addRef)(self.0.cast());
+                    }
+                    Self(self.0.cast())
+                }
+            }
+        }
+    };
+    ($name: ident, $sys_ty: ty, Debug) => {
         paste::paste! {
             #[repr(transparent)]
             #[derive(Debug)]
