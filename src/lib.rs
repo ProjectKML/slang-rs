@@ -292,6 +292,16 @@ pub struct CompilerOptionEntry {
     pub value: CompilerOptionValue,
 }
 
+impl CompilerOptionEntry {
+    #[inline]
+    pub fn new(name: CompilerOptionName, value: impl Into<CompilerOptionValue>) -> Self {
+        Self {
+            name,
+            value: value.into(),
+        }
+    }
+}
+
 impl Default for CompilerOptionEntry {
     #[inline]
     fn default() -> Self {
