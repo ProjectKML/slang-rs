@@ -256,6 +256,35 @@ pub struct CompilerOptionValue {
     pub string_value1: *const c_char,
 }
 
+impl Default for CompilerOptionValue {
+    #[inline]
+    fn default() -> Self {
+        unsafe { mem::zeroed() }
+    }
+}
+
+impl From<i32> for CompilerOptionValue {
+    #[inline]
+    fn from(value: i32) -> Self {
+        Self {
+            kind: CompilerOptionValueKind::INT,
+            int_value0: value,
+            ..Default::default()
+        }
+    }
+}
+
+impl From<*const c_char> for CompilerOptionValue {
+    #[inline]
+    fn from(value: *const c_char) -> Self {
+        Self {
+            kind: CompilerOptionValueKind::STRING,
+            string_value0: value,
+            ..Default::default()
+        }
+    }
+}
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct CompilerOptionEntry {
