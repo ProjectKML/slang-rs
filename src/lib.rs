@@ -534,6 +534,16 @@ impl SessionDescBuilder<'_> {
         self.desc.allow_glsl_syntax = allow_glsl_syntax;
         self
     }
+
+    #[inline]
+    pub fn compiler_option_entries(
+        mut self,
+        compiler_option_entries: &mut [CompilerOptionEntry],
+    ) -> Self {
+        self.desc.compiler_option_entries = compiler_option_entries.as_mut_ptr();
+        self.desc.compiler_option_entry_count = compiler_option_entries.len() as _;
+        self
+    }
 }
 
 impl Default for SessionDescBuilder<'_> {
