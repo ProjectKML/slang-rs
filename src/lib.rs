@@ -31,8 +31,6 @@ impl CompileTarget {
     pub const UNKNOWN: Self = Self(sys::SlangCompileTarget_SLANG_TARGET_UNKNOWN as _);
     pub const NONE: Self = Self(sys::SlangCompileTarget_SLANG_TARGET_NONE as _);
     pub const GLSL: Self = Self(sys::SlangCompileTarget_SLANG_GLSL as _);
-    pub const GLSL_VULKAN: Self = Self(sys::SlangCompileTarget_SLANG_GLSL_VULKAN as _);
-    pub const VULKAN_ONE_DESC: Self = Self(sys::SlangCompileTarget_SLANG_GLSL_VULKAN_ONE_DESC as _);
     pub const HLSL: Self = Self(sys::SlangCompileTarget_SLANG_HLSL as _);
     pub const SPIRV: Self = Self(sys::SlangCompileTarget_SLANG_SPIRV as _);
     pub const SPIRV_ASM: Self = Self(sys::SlangCompileTarget_SLANG_SPIRV_ASM as _);
@@ -117,6 +115,11 @@ impl CompilerOptionName {
     pub const MATRIX_LAYOUT_COLUMN: Self =
         Self(sys::slang_CompilerOptionName_MatrixLayoutColumn as _);
     pub const MATRIX_LAYOUT_ROW: Self = Self(sys::slang_CompilerOptionName_MatrixLayoutRow as _);
+    pub const ZERO_INITIALIZE: Self = Self(sys::slang_CompilerOptionName_ZeroInitialize as _);
+    pub const IGNORE_CAPABILITIES: Self =
+        Self(sys::slang_CompilerOptionName_IgnoreCapabilities as _);
+    pub const RESTRICTIVE_CAPABILITY_CHECK: Self =
+        Self(sys::slang_CompilerOptionName_RestrictiveCapabilityCheck as _);
     pub const MODULE_NAME: Self = Self(sys::slang_CompilerOptionName_ModuleName as _);
     pub const OUTPUT: Self = Self(sys::slang_CompilerOptionName_Output as _);
     pub const PROFILE: Self = Self(sys::slang_CompilerOptionName_Profile as _);
@@ -141,6 +144,16 @@ impl CompilerOptionName {
     pub const SOURCE_EMBED_NAME: Self = Self(sys::slang_CompilerOptionName_SourceEmbedName as _);
     pub const SOURCE_EMBED_LANGUAGE: Self =
         Self(sys::slang_CompilerOptionName_SourceEmbedLanguage as _);
+    pub const DISABLE_SHORT_CIRCUIT: Self =
+        Self(sys::slang_CompilerOptionName_DisableShortCircuit as _);
+    pub const MINIMUM_SLANG_OPTIMIZATION: Self =
+        Self(sys::slang_CompilerOptionName_MinimumSlangOptimization as _);
+    pub const DISABLE_NON_ESSENTIAL_VALIDATIONS: Self =
+        Self(sys::slang_CompilerOptionName_DisableNonEssentialValidations as _);
+    pub const DISABLE_SOURCE_MAP: Self = Self(sys::slang_CompilerOptionName_DisableSourceMap as _);
+    pub const UNSCOPED_ENUM: Self = Self(sys::slang_CompilerOptionName_UnscopedEnum as _);
+    pub const PRESERVE_PARAMETERS: Self =
+        Self(sys::slang_CompilerOptionName_PreserveParameters as _);
     pub const CAPABILITY: Self = Self(sys::slang_CompilerOptionName_Capability as _);
     pub const DEFAULT_IMAGE_FORMAT_UNKNOWN: Self =
         Self(sys::slang_CompilerOptionName_DefaultImageFormatUnknown as _);
@@ -211,6 +224,8 @@ impl CompilerOptionName {
     pub const HETEROGENEOUS: Self = Self(sys::slang_CompilerOptionName_Heterogeneous as _);
     pub const NO_MANGLE: Self = Self(sys::slang_CompilerOptionName_NoMangle as _);
     pub const NO_HLSL_BINDING: Self = Self(sys::slang_CompilerOptionName_NoHLSLBinding as _);
+    pub const NO_HLSL_PACK_CONSTANT_BUFFER_ELEMENTS: Self =
+        Self(sys::slang_CompilerOptionName_NoHLSLPackConstantBufferElements as _);
     pub const VALIDATE_UNIFORMITY: Self =
         Self(sys::slang_CompilerOptionName_ValidateUniformity as _);
     pub const ALLOW_GLSL: Self = Self(sys::slang_CompilerOptionName_AllowGLSL as _);
@@ -224,10 +239,13 @@ impl CompilerOptionName {
     pub const SAVE_STD_LIB_BIN_SOURCE: Self =
         Self(sys::slang_CompilerOptionName_SaveStdLibBinSource as _);
     pub const TRACK_LIVENESS: Self = Self(sys::slang_CompilerOptionName_TrackLiveness as _);
+    pub const LOOP_INVERSION: Self = Self(sys::slang_CompilerOptionName_LoopInversion as _);
     pub const PARAMETER_BLOCKS_USE_REGISTER_SPACES: Self =
         Self(sys::slang_CompilerOptionName_ParameterBlocksUseRegisterSpaces as _);
+
     pub const COUNT_OF_PARSABLE_OPTIONS: Self =
         Self(sys::slang_CompilerOptionName_CountOfParsableOptions as _);
+
     pub const DEBUG_INFORMATION_FORMAT: Self =
         Self(sys::slang_CompilerOptionName_DebugInformationFormat as _);
     pub const VULKAN_BIND_SHIFT_ALL: Self =
@@ -355,6 +373,8 @@ impl Default for TargetDesc {
         unsafe { mem::zeroed() }
     }
 }
+
+assert_size_and_align!(TargetDesc, sys::slang_TargetDesc);
 
 #[repr(transparent)]
 pub struct TargetDescBuilder<'a>(TargetDesc, PhantomData<&'a ()>);
@@ -487,6 +507,8 @@ impl Default for SessionDesc {
         unsafe { mem::zeroed() }
     }
 }
+
+assert_size_and_align!(SessionDesc, sys::slang_SessionDesc);
 
 pub struct SessionDescBuilder<'a> {
     desc: SessionDesc,

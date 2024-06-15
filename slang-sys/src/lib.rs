@@ -106,6 +106,7 @@ interface!(slang_IComponentType, [0x5bc42be8, 0x5c50, 0x4929, {0x9e, 0x5e, 0xd1,
 	getEntryPointHostCallable: unsafe extern "C" fn(*mut slang_IComponentType, entry_point_index: SlangInt, target_index: SlangInt, out_shared_library: *mut *mut ISlangSharedLibrary, out_diagnostics: *mut *mut slang_IBlob) -> SlangResult,
 	renameEntryPoint: unsafe extern "C" fn(*mut slang_IComponentType, new_name: *const c_char, out_entry_point: *mut *mut slang_IComponentType) -> SlangResult,
 	linkWithOptions: unsafe extern "C" fn(*mut slang_IComponentType, out_linked_component_type: *mut *mut slang_IComponentType, compiler_option_entry_count: u32, compiler_option_entries: *mut slang_CompilerOptionEntry, out_diagnostics: *mut *mut ISlangBlob) -> SlangResult,
+	getTargetCode: unsafe extern "C" fn(*mut slang_IComponentType, target_index: SlangInt, out_code: *mut *mut ISlangBlob, out_diagnostics: *mut *mut ISlangBlob) -> SlangResult,
 });
 
 interface!(slang_IModule, [0xc720e64, 0x8722, 0x4d31, {0x89, 0x90, 0x63, 0x8a, 0x98, 0xb1, 0xc2, 0x79}]: slang_IComponentType, {
