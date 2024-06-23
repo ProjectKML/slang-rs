@@ -43,11 +43,13 @@ fn main() {
 
     #[cfg(not(feature = "static"))]
     {
-        #[cfg(any(target_os = "windows", target_os = "linux"))]
+        #[cfg(any(target_os = "windows"))]
         {
             println!("cargo:rustc-link-search=native={}", "C:/Users/beastle9end/Documents/Programs/slang");
             println!("cargo:rustc-link-lib=static=slang");
         }
+        #[cfg(target_os = "linux")]
+        println!("cargo:rustc-link-lib=slang");
 
         #[cfg(target_os = "macos")]
         println!("cargo:rustc-link-lib=dylib=slang");
