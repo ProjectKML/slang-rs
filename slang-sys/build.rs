@@ -45,7 +45,24 @@ fn main() {
     {
         #[cfg(any(target_os = "windows"))]
         {
-            println!("cargo:rustc-link-search=native={}", "C:/Users/beastle9end/Documents/Programs/slang");
+            use std::env;
+            use std::path::PathBuf;
+
+            let slang_dir = env::var("SLANG_DIR").map(PathBuf::from).expect("Please provide an environment variable `SLANG_DIR` that points to your slang installation.");
+
+            let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+            let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+
+            let target = match (&*target_os, &*target_arch) {
+                ("windows", "x86") => "windows-x86",
+                ("windows", "x86_64") => "windows-x64",
+                ("windows", "aarch64") => "windows-aarch64",
+                (os, arch) => panic!("Unsupported os and arch: {os}:{arch}")
+            };
+
+            let library_path = slang_dir.join("bin").join(target).join("release");
+
+            println!("cargo:rustc-link-search=native={}", library_path.display());
             println!("cargo:rustc-link-lib=static=slang");
         }
         #[cfg(target_os = "linux")]
