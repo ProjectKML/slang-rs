@@ -5,7 +5,7 @@ fn generate_bindings() {
     fs::create_dir_all("gen").unwrap();
 
     bindgen::Builder::default()
-        .header("vendor/slang/slang.h")
+        .header("vendor/slang/include/slang.h")
         .clang_arg("-I./vendor/slang")
         .clang_arg("-xc++")
         .clang_arg("-std=c++17")
