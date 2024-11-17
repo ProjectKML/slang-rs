@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use crate::{sys, Blob};
 
-#[derive(Error, Debug)]
+#[derive(Error, Clone, Debug)]
 pub enum Error {
     #[error("{0}")]
     Result(sys::SlangResult),
