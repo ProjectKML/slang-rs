@@ -765,6 +765,9 @@ impl From<String> for Blob {
     }
 }
 
+unsafe impl Send for Blob {}
+unsafe impl Sync for Blob {}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct SpecializationArgKind(i32);
 
